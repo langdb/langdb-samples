@@ -71,17 +71,18 @@ ORDER BY
   LIMIT 5
 
 CREATE PROMPT fin_analysis_prompt (
-    system "You are a helpful assistant. You have been provided SEC filings of multiple companies as input. Your task is to extract structured data from this PDF files, into a table (which will be stored in ClickHouse).
-    You can utilise the generate_output_table tool for this. In addition, your task is also to help users with any queries they might have about the SEC filings. Go through all the content and then respond.
+    system "You are a helpful assistant. You have been provided SEC filings of multiple companies as input. Your task is also to help users with any queries they might have about the SEC filings. Go through all the content and then respond.
     Question: {{question}}
     Helpful Answer: "
 );
 
-CREATE MODEL IF NOT EXISTS financial_analysis( provider 'OpenAI',
-    model_name 'gpt-3.5-turbo',
+CREATE MODEL IF NOT EXISTS financial_analysis( 
+    provider 'OpenAI',
+    model_name 'gpt-4-turbo',
     prompt_name 'fin_analysis_prompt',
-    api_key "api-key",
     execution_options (retries 2),
     args ["question"],
     tools ["investor_guide"]
 );
+
+SELECT financial_analysis('Tell me about the revenue of uber and possible losses')
