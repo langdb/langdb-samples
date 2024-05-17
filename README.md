@@ -12,8 +12,9 @@ The repository is structured as follows:
 
 | Sample                                           | Description                                  |
 | ------------------------------------------------ | -------------------------------------------- |
-| [Basic RAG on PDF ](agents/pdf-rag.sql)        | Explains how to run RAG on PDF files         |
+| [Basic RAG on PDF](agents/pdf-rag.sql)        | Explains how to run RAG on PDF files         |
 | [Extract Tables from PDF](agents/pdf-tables.sql) | Convert PDF documents into structured tables |
+| [Combine Structured Data w/ Unstructured Data](agents/combine-structured-with-unstructured.sql) | Combine insights from both structured and unstructured data |
 
 ## Contributing
 
