@@ -11,7 +11,7 @@ order by (id, content);
 -- Load a PDF file 
 INSERT INTO pdfs(content, metadata)
 SELECT content, metadata from 
-load_pdf ('file:///var/lib/clickhouse/user_files/apple.pdf');
+load_pdf_ ('file:///var/lib/clickhouse/user_files/apple.pdf');
 
 
 CREATE TABLE pdf_embeddings (

@@ -2,6 +2,9 @@
 
 This repository hosts code samples for LangDB. All samples are written in SQL.
 
+## LangDB Kernel
+Use the LangDB kernel to run the notebook samples.
+
 ## Structure
 
 The repository is structured as follows:
