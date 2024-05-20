@@ -14,23 +14,23 @@ order by (id, content);
 --nvidia
 INSERT INTO pdfs(content, metadata, filename)
 SELECT content, metadata, 'NVIDIA' from 
-load_pdf('https://d18rn0p25nwr6d.cloudfront.net/CIK-0001045810/1cbe8fe7-e08a-46e3-8dcc-b429fc06c1a4.pdf');
+load_pdf_text('https://d18rn0p25nwr6d.cloudfront.net/CIK-0001045810/1cbe8fe7-e08a-46e3-8dcc-b429fc06c1a4.pdf');
 
 --apple
 INSERT INTO pdfs(content, metadata, filename)
 SELECT content, metadata, 'APPLE' from 
-load_pdf('https://d18rn0p25nwr6d.cloudfront.net/CIK-0000320193/faab4555-c69b-438a-aaf7-e09305f87ca3.pdf');
+load_pdf_text('https://d18rn0p25nwr6d.cloudfront.net/CIK-0000320193/faab4555-c69b-438a-aaf7-e09305f87ca3.pdf');
 
 --uber
 INSERT INTO pdfs(content, metadata, filename)
 SELECT content, metadata, 'UBER' from 
-load_pdf('https://d18rn0p25nwr6d.cloudfront.net/CIK-0001543151/6fabd79a-baa9-4b08-84fe-deab4ef8415f.pdf');
+load_pdf_text('https://d18rn0p25nwr6d.cloudfront.net/CIK-0001543151/6fabd79a-baa9-4b08-84fe-deab4ef8415f.pdf');
 
 
 --amazon
 INSERT INTO pdfs(content, metadata, filename)
 SELECT content, metadata, 'AMAZON' from 
-load_pdf('https://d18rn0p25nwr6d.cloudfront.net/CIK-0001018724/c7c14359-36fa-40c3-b3ca-5bf7f3fa0b96.pdf');
+load_pdf_text('https://d18rn0p25nwr6d.cloudfront.net/CIK-0001018724/c7c14359-36fa-40c3-b3ca-5bf7f3fa0b96.pdf');
 
 
 
