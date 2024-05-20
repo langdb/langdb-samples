@@ -15,9 +15,12 @@ The repository is structured as follows:
 
 | Sample                                           | Description                                  |
 | ------------------------------------------------ | -------------------------------------------- |
-| [Basic RAG on PDF](agents/pdf-rag.sql)        | Explains how to run RAG on PDF files         |
-| [Extract Tables from PDF](agents/pdf-tables.sql) | Convert PDF documents into structured tables |
+| [Embed and Query PDFs](agents/PDF%20extraction%20&%20RAG%20using%20LangDB.ipynb)        | Explains how to run RAG on PDF files         |
+| [Sentiment Analysis - I](agents/Sentinment%20Analysis%20Part%201.ipynb)        | Create a sentiment model using LLMs         |
+| [Sentiment Analysis - 2](agents/Sentinment%20Analysis%20Part%202.ipynb)        | Create a batched sentiment model using LLMs         |
 | [Combine Structured Data w/ Unstructured Data](agents/combine-structured-with-unstructured.sql) | Combine insights from both structured and unstructured data |
+| [Extract Structured Tables from PDF](agents/pdf-tables.sql) | Convert PDF documents into structured tables |
+
 
 ## Contributing
 
