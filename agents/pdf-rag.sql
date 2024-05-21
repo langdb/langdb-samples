@@ -22,7 +22,7 @@ engine = MergeTree
 order by id;
 
 -- Maintain records that dont have embeddings yet
-SPAWN TASK 
+SPAWN TASK generate_embeddings
     BEGIN
 INSERT INTO pdf_embeddings
 select p.id, embed(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id
