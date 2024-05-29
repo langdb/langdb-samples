@@ -10,6 +10,7 @@ Use the LangDB kernel to run the notebook samples.
 The repository is structured as follows:
 
 - `agents/`: This directory contains SQL samples related to agents.
+- `learn/` : This directory contains Learning examples to understand LangDB's working.
 
 ## Agents
 
