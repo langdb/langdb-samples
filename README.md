@@ -9,9 +9,18 @@ Use the LangDB kernel to run the notebook samples.
 
 The repository is structured as follows:
 
-- `agents/`: This directory contains SQL samples related to agents.
 - `learn/` : This directory contains Learning examples to understand LangDB's working.
+- `agents/`: This directory contains SQL samples related to agents.
 
+## Learn 
+
+| Example                                         | Description                                      |
+| ------------------------------------------------| ------------------------------------------------ |
+| [Loading Data](learn/loading_data.ipynb)        | Explains various ways to load data in LangDB      |
+| [Embeddings](learn/embeddings.ipynb)            | Explains details about Vector Embeddings and How to generate them |
+| [Prompts](learn/prompts.ipynb)                  | Explains Prompts and how to use them |
+| [Models](learn/models.ipynb)                    | Explains Models in LangDB |
+| [Endpoints](learn/endpoints.ipynb)              | Explains what Endpoints are |
 ## Agents
 
 | Sample                                           | Description                                  |
