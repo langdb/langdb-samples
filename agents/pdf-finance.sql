@@ -70,19 +70,14 @@ ORDER BY
   similarity ASC 
   LIMIT 5
 
-CREATE PROMPT fin_analysis_prompt (
-    system "You are a helpful assistant. You have been provided SEC filings of multiple companies as input. Your task is also to help users with any queries they might have about the SEC filings. Go through all the content and then respond.
-    Question: {{question}}
-    Helpful Answer: "
-);
 
 CREATE MODEL IF NOT EXISTS financial_analysis( 
-    provider 'OpenAI',
-    model_name 'gpt-4-turbo',
-    prompt_name 'fin_analysis_prompt',
-    execution_options (retries 2),
-    args ["question"],
-    tools ["investor_guide"]
-);
+  question
+) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')
+PROMPT (system "You are a helpful assistant. You have been provided SEC filings of multiple companies as input. Your task is also to help users with any queries they might have about the SEC filings. Go through all the content and then respond.
+    Question: {{question}}
+    Helpful Answer: ")
+TOOLS (investor_guide)
+SETTINGS retries = 2;
 
 SELECT financial_analysis('Tell me about the revenue of uber and possible losses')
