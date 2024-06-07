@@ -50,25 +50,21 @@ JOIN
 CROSS JOIN 
   tbl 
 ORDER BY 
-  similarity DESC 
+  similarity ASC 
   LIMIT 5
 
 -- Now you can query similar documents like this:  
 select * from similar('PLEASE NOTE: THERE IS NO PROOF OF CLAIM FORM FOR')
 
 
-CREATE PROMPT similar_pt (
-  system "Use the tool 'similar' to query for similar documents based on user query and respond with relevant docuemnts.",
-  human "{{input}}"
-);
 
 CREATE MODEL doc_search(
-  provider 'OpenAI',
-  model_name 'gpt-3.5-turbo',
-  prompt_name "similar_pt",
-  execution_options (retries 1),
-  args ["input"],
-  tools ["similar"]
-)
+  input
+) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')
+PROMPT (
+  system "Use the tool 'similar' to query for similar documents based on user query and respond with relevant docuemnts.",
+  human "{{input}}")
+TOOLS (similar)
+SETTINGS retries = 1;
 
 select * from doc_search('THERE IS NO PROOF OF CLAIM FORM FOR')
