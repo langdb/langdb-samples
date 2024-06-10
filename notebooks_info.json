@@ -1,0 +1,1528 @@
+[
+    {
+        "title": "Sentinment Analysis Part 2",
+        "content": {
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "id": "7e549dc8-f6fb-4e4b-a65c-4b3b8898dddf",
+                    "metadata": {},
+                    "source": "# Sentiment Analysis using LangDB and LLMs - Part 2\n\nThis is a  continuation to the post [here](https://langdb.ai/docs/getting_started/sentiment-1/). As discussed in the previous section, we will implement another approach in this example. \n\n**Approach**\n- Send batch of 10 rows at a time leveraging `pretty_print()` function.\n- Instruct LLM to lag out specific extreme reviews that deviate too much for a product in a response.\n- Create an `Endpoint` for accessing reviews based on id.\n"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 2,
+                    "id": "9668350a-0295-45b0-9e88-67a0afeaad12",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "-- Insert 100 records into products table\nINSERT INTO products (product_id, product_name) \nSELECT number + 1, concat('Product ', toString(number + 1))\nFROM numbers(100);"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 10,
+                    "id": "78c90281-34e5-4193-8d81-d6b0d5c247e3",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "-- Insert randomised records into customer_reviews table with realistic review texts and anomalies\nINSERT INTO customer_reviews (review_id, product_id, customer_id, review_date, review_text, rating, location)\nSELECT \n    number + 1,\n    rand() % 100 + 1,  -- Random product_id between 1 and 100\n    rand() % 1000 + 1, -- Random customer_id between 1 and 1000\n    today() - (rand() % 365), -- Random review_date within the last year\n    [\n        'This product exceeded my expectations. It is very reliable and works as described.',\n        'I am not satisfied with this product. It broke within a week of purchase.',\n        'Great value for money. I would recommend this to my friends and family.',\n        'Terrible product. I had a very bad experience and would not buy again.',\n        'The quality of this product is excellent. Very happy with my purchase.',\n        'Not worth the price. There are better options available in the market.',\n        'This product is just okay. It works but there are some issues.',\n        'I love this product! It has made my life so much easier.',\n        'The customer service was great, but the product did not meet my expectations.',\n        'Good product but delivery was delayed.',\n        -- Add anomalies\n        'This product is amazing! (Anomaly: rating 1)',  -- Anomaly: Positive review with a very low rating\n        'Worst product ever. (Anomaly: rating 5)',       -- Anomaly: Negative review with a very high rating\n        'Totally different product received. (Anomaly: non-existent product_id)',  -- Anomaly: product_id > 100\n        'Unbelievably good! Would buy again and again. (Anomaly: extremely high rating)',  -- Anomaly: rating 6\n        'I will never buy this product again. (Anomaly: negative review with positive sentiment)',  -- Anomaly: Conflicting sentiment\n        'The product arrived broken. (Anomaly: low rating but positive sentiment)'  -- Anomaly: Conflicting sentiment\n    ][rand() % 15 + 1] AS review_text,  -- Select a random review text\n    [1, 5, 4, 1, 5, 2, 3, 5, 3, 4, 1, 5, 1, 5, 6, 4, 2][rand() % 15 + 1] AS rating,  -- Introduce some anomalies in ratings\n    [\n        'New York, NY', 'Los Angeles, CA', 'Chicago, IL', 'Houston, TX', 'Phoenix, AZ', \n        'Philadelphia, PA', 'San Antonio, TX', 'San Diego, CA', 'Dallas, TX', 'San Jose, CA',\n        'Miami, FL', 'Seattle, WA', 'Denver, CO', 'Boston, MA', 'Atlanta, GA',\n        'Las Vegas, NV', 'Austin, TX', 'San Francisco, CA', 'Charlotte, NC', 'Detroit, MI'\n    ][rand() % 15 + 1] AS location  -- Random location\nFROM numbers(1000);"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 11,
+                    "id": "1e8d99db-b250-4bbc-8d6f-a29057075052",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>count()</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>1000</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select count(*) from customer_reviews;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 12,
+                    "id": "b7552c39-d0f4-4274-aff1-d1b8a31d83a5",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>review_id</th>\n      <th>product_id</th>\n      <th>customer_id</th>\n      <th>review_date</th>\n      <th>review_text</th>\n      <th>rating</th>\n      <th>location</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>1</td>\n      <td>69</td>\n      <td>869</td>\n      <td>2023-07-06</td>\n      <td>The customer service was great, but the product did not meet my expectations.</td>\n      <td>3</td>\n      <td>Dallas, TX</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>2</td>\n      <td>78</td>\n      <td>78</td>\n      <td>2023-06-02</td>\n      <td>Totally different product received. (Anomaly: non-existent product_id)</td>\n      <td>1</td>\n      <td>Denver, CO</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>3</td>\n      <td>80</td>\n      <td>680</td>\n      <td>2024-01-21</td>\n      <td>Good product but delivery was delayed.</td>\n      <td>4</td>\n      <td>San Jose, CA</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>4</td>\n      <td>84</td>\n      <td>984</td>\n      <td>2024-05-01</td>\n      <td>Terrible product. I had a very bad experience and would not buy again.</td>\n      <td>1</td>\n      <td>Houston, TX</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>5</td>\n      <td>50</td>\n      <td>350</td>\n      <td>2023-11-12</td>\n      <td>The quality of this product is excellent. Very happy with my purchase.</td>\n      <td>5</td>\n      <td>Phoenix, AZ</td>\n    </tr>\n    <tr>\n      <th>5</th>\n      <td>6</td>\n      <td>19</td>\n      <td>319</td>\n      <td>2023-12-03</td>\n      <td>The customer service was great, but the product did not meet my expectations.</td>\n      <td>3</td>\n      <td>Dallas, TX</td>\n    </tr>\n    <tr>\n      <th>6</th>\n      <td>7</td>\n      <td>80</td>\n      <td>80</td>\n      <td>2023-09-23</td>\n      <td>Good product but delivery was delayed.</td>\n      <td>4</td>\n      <td>San Jose, CA</td>\n    </tr>\n    <tr>\n      <th>7</th>\n      <td>8</td>\n      <td>47</td>\n      <td>847</td>\n      <td>2024-02-18</td>\n      <td>Worst product ever. (Anomaly: rating 5)</td>\n      <td>5</td>\n      <td>Seattle, WA</td>\n    </tr>\n    <tr>\n      <th>8</th>\n      <td>9</td>\n      <td>58</td>\n      <td>458</td>\n      <td>2023-09-30</td>\n      <td>I love this product! It has made my life so much easier.</td>\n      <td>5</td>\n      <td>San Diego, CA</td>\n    </tr>\n    <tr>\n      <th>9</th>\n      <td>10</td>\n      <td>21</td>\n      <td>421</td>\n      <td>2023-09-12</td>\n      <td>Not worth the price. There are better options available in the market.</td>\n      <td>2</td>\n      <td>Philadelphia, PA</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from customer_reviews limit 10"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "ebf9d2eb-0485-474c-9c6a-0d331beabced",
+                    "metadata": {},
+                    "source": "> Hint: You can use `pretty_print()` function to turn any table into YAML that can be fed into LLMs as context"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 17,
+                    "id": "7c840033-0afd-4a66-8b19-17ab8d38f9af",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>content</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>| review_id | product_id | customer_id | review_date | review_text                                                                   | rating | location         |\\n|-----------|------------|-------------|-------------|-------------------------------------------------------------------------------|--------|------------------|\\n| 1         | 69         | 869         | 2023-07-06  | The customer service was great, but the product did not meet my expectations. | 3      | Dallas, TX       |\\n| 2         | 78         | 78          | 2023-06-02  | Totally different product received. (Anomaly: non-existent product_id)        | 1      | Denver, CO       |\\n| 3         | 80         | 680         | 2024-01-21  | Good product but delivery was delayed.                                        | 4      | San Jose, CA     |\\n| 4         | 84         | 984         | 2024-05-01  | Terrible product. I had a very bad experience and would not buy again.        | 1      | Houston, TX      |\\n| 5         | 50         | 350         | 2023-11-12  | The quality of this product is excellent. Very happy with my purchase.        | 5      | Phoenix, AZ      |\\n| 6         | 19         | 319         | 2023-12-03  | The customer service was great, but the product did not meet my expectations. | 3      | Dallas, TX       |\\n| 7         | 80         | 80          | 2023-09-23  | Good product but delivery was delayed.                                        | 4      | San Jose, CA     |\\n| 8         | 47         | 847         | 2024-02-18  | Worst product ever. (Anomaly: rating 5)                                       | 5      | Seattle, WA      |\\n| 9         | 58         | 458         | 2023-09-30  | I love this product! It has made my life so much easier.                      | 5      | San Diego, CA    |\\n| 10        | 21         | 421         | 2023-09-12  | Not worth the price. There are better options available in the market.        | 2      | Philadelphia, PA |</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from pretty_print((select * from customer_reviews limit 10))"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "f0e7da3c-9068-4668-8d19-58c20c3b6117",
+                    "metadata": {},
+                    "source": "Lets create a new model similar to review but that analyses 10 reviews at a time but also looks at exceptions and flag them."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 33,
+                    "id": "1e14ec7f-a07c-44c4-95ec-ce57f298fd1d",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE PROMPT customer_review_pt_detailed (\n  system 'You are an AI assistant. Look at the provided set of reviews in a markdown format and return average sentiment score ranging from 1 to 10 for each review in each line. \n    If you notice that provided rating is signifcantly different than calculated sentiment, mark anomaly as true. \n    Output should strictly be one single JSON array without any additional tags like below. Strictly return Response will be directly fed to a json parser. \n    ```\n    [{ \"review_id\": review_id, \"sentiment\": sentiment, \"anomaly\": anomaly }]\n    ```\n    ',\n  human '{{reviews}}'\n);"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 34,
+                    "id": "aa1f3fdf-cf17-4906-836d-1ba5cc5d919c",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE MODEL review_detailed(\n    reviews\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT customer_review_pt_detailed;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 40,
+                    "id": "bebeffa7-5ea4-4d1c-841d-ccfb6c2bf37a",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE calculated_review_jsons ( \n    batch_id UInt32,\n    response String,\n)\nEngine = MergeTree\nOrder By response"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "5447f33d-d759-48dc-9c4a-bce84e7cb8bc",
+                    "metadata": {},
+                    "source": "### Batch & Scheduling\nLets run a batch request with a `batch_id` parameter. We can leverage `SPAWN TASK command` to run things in background or use external scheduling tools to execute these queries in a batch. "
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 42,
+                    "id": "e82785a0-0f22-4e3e-958e-dba4d13f481a",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "INSERT INTO calculated_review_jsons\nSELECT 1 as batch_id, review_detailed(\n    (select content from pretty_print((select * from customer_reviews limit 10)) limit 1)\n) "
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 43,
+                    "id": "6c2503c0-a97a-46a8-ac99-8c8cc7acb33d",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "INSERT INTO calculated_review_jsons\nSELECT 2 as batch_id, review_detailed(\n    (select content from pretty_print((select * from customer_reviews offset 10limit 10)) limit 1)\n) "
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 45,
+                    "id": "e788a76f-6f13-473d-a5f5-a0f2fb19f8a1",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>batch_id</th>\n      <th>response</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>1</td>\n      <td>[\\n    { \"review_id\": 1, \"sentiment\": 4, \"anomaly\": false },\\n    { \"review_id\": 2, \"sentiment\": 1, \"anomaly\": false },\\n    { \"review_id\": 3, \"sentiment\": 7, \"anomaly\": false },\\n    { \"review_id\": 4, \"sentiment\": 2, \"anomaly\": false },\\n    { \"review_id\": 5, \"sentiment\": 8, \"anomaly\": false },\\n    { \"review_id\": 6, \"sentiment\": 4, \"anomaly\": false },\\n    { \"review_id\": 7, \"sentiment\": 7, \"anomaly\": false },\\n    { \"review_id\": 8, \"sentiment\": 2, \"anomaly\": true },\\n    { \"review_id\": 9, \"sentiment\": 8, \"anomaly\": false },\\n    { \"review_id\": 10, \"sentiment\": 2, \"anomaly\": false }\\n]</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>2</td>\n      <td>[\\n    {\"review_id\": 11, \"sentiment\": 4, \"anomaly\": false},\\n    {\"review_id\": 12, \"sentiment\": 2, \"anomaly\": true},\\n    {\"review_id\": 13, \"sentiment\": 9, \"anomaly\": true},\\n    {\"review_id\": 14, \"sentiment\": 2, \"anomaly\": true},\\n    {\"review_id\": 15, \"sentiment\": 8, \"anomaly\": false},\\n    {\"review_id\": 16, \"sentiment\": 8, \"anomaly\": true},\\n    {\"review_id\": 17, \"sentiment\": 4, \"anomaly\": false},\\n    {\"review_id\": 18, \"sentiment\": 3, \"anomaly\": false},\\n    {\"review_id\": 19, \"sentiment\": 5, \"anomaly\": false},\\n    {\"review_id\": 20, \"sentiment\": 9, \"anomaly\": true}\\n]</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from calculated_review_jsons limit 2"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "c93c713b-87d9-478f-bf94-325c41c3a373",
+                    "metadata": {},
+                    "source": "### Calculating avg sentiment based on LLM response"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 56,
+                    "id": "b61584ac-ff16-413d-93bc-0a68fc643f10",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>cr.review_id</th>\n      <th>p.product_id</th>\n      <th>product_name</th>\n      <th>avg(sentiment)</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>10</td>\n      <td>21</td>\n      <td>Product 21</td>\n      <td>2</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>5</td>\n      <td>50</td>\n      <td>Product 50</td>\n      <td>8</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>17</td>\n      <td>2</td>\n      <td>Product B</td>\n      <td>4</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select cr.review_id, p.product_id, p.product_name, avg(sentiment)\nFROM customer_reviews as cr \nJOIN products as p on p.product_id = cr.product_id\nJOIN (\n    SELECT\n        JSONExtractInt(element, 'sentiment') AS sentiment,\n        JSONExtractBool(element, 'anomaly') AS anomaly,\n        JSONExtractInt(element, 'review_id') AS review_id\n    FROM\n    (\n        SELECT batch_id, arrayJoin(JSONExtractArrayRaw(response)) AS element\n        FROM calculated_review_jsons as crj \n    ) \n) crj on crj.review_id = cr.review_id\ngroup by cr.review_id, p.product_id, p.product_name\nlimit 3"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "d79154f7-9c5f-4a75-adcd-91e7c31ee703",
+                    "metadata": {},
+                    "source": "Using the above query lets create an `endpoint` that returns avg sentiment based on a product id"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 65,
+                    "id": "95f9b196-dd2d-4aa5-aced-10d6e9745aa7",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE ENDPOINT product_sentiment (product_id Int) AS \nSELECT cr.review_id as review_id, p.product_id as product_id, p.product_name as product_name, avg(sentiment) as avg_sentiment\nFROM customer_reviews as cr \nJOIN products as p on p.product_id = cr.product_id\nJOIN (\n    SELECT\n        JSONExtractInt(element, 'sentiment') AS sentiment,\n        JSONExtractBool(element, 'anomaly') AS anomaly,\n        JSONExtractInt(element, 'review_id') AS review_id\n    FROM\n    (\n        SELECT batch_id, arrayJoin(JSONExtractArrayRaw(response)) AS element\n        FROM calculated_review_jsons as crj \n    ) \n) crj on crj.review_id = cr.review_id\nWHERE p.product_id = $product_id\ngroup by cr.review_id, p.product_id, p.product_name"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 67,
+                    "id": "9ec595e0-24ac-4ce9-8b4e-2e97f5ef3905",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>review_id</th>\n      <th>product_id</th>\n      <th>product_name</th>\n      <th>avg_sentiment</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>10</td>\n      <td>21</td>\n      <td>Product 21</td>\n      <td>2</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from product_sentiment(21)"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "2016615f-e4b2-4e29-9b70-e6283f4f3e25",
+                    "metadata": {},
+                    "source": "As this response is purely a SQL query, it can immediately integrate with your existing data or BI environments. "
+                }
+            ],
+            "metadata": {
+                "kernelspec": {
+                    "display_name": "langdb",
+                    "language": "sql",
+                    "name": "langdb"
+                },
+                "language_info": {
+                    "codemirror_mode": "sql",
+                    "file_extension": ".sql",
+                    "mimetype": "text/x-sql",
+                    "name": "sql"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 5
+        },
+        "last_modified": "2024-06-04T23:49:55+05:30",
+        "created_at": "2024-05-20T13:49:42+08:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Sentinment%20Analysis%20Part%202.ipynb",
+        "tags": [
+            "Agent"
+        ]
+    },
+    {
+        "title": "PDF extraction & RAG using LangDB",
+        "content": {
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "id": "1c6e40e4-ceb4-4328-8c37-5d55fd2beea3",
+                    "metadata": {},
+                    "source": "# RAG powered by LangDB\nLangDB aims to bridge the gap between data and AI world by running them alongside. You can create an entire LangDB experience just using SQL commands all the way from extraction to creating a chat agent. \n\nThis sample demonstrates the following:\n\n- Extract data from PDF using `load_pdf_text` command.\n- Create a RAG function that leverages vector search easily using `Endpoint`\n- Create a LangDB `model` that connects to `OpenAI` APIs."
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "83765c89-78d8-4977-b90d-e2509f0b07a8",
+                    "metadata": {},
+                    "source": "### Extract semantically chunked data from pdfs and insert into tables."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 1,
+                    "id": "ae892947-d9d5-45ac-8cc2-8c3c10cd55a6",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE TABLE pdfs (\n  id UUID DEFAULT generateUUIDv4(),\n  content `String`, \n  metadata `String`,\n   \n) \nengine = MergeTree\norder by (id, content);"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 13,
+                    "id": "931bdb23-2a26-419b-9558-99d634c68279",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "INSERT INTO pdfs(content, metadata)\nSELECT content, metadata from \nload_pdf_text ('https://d18rn0p25nwr6d.cloudfront.net/CIK-0000320193/faab4555-c69b-438a-aaf7-e09305f87ca3.pdf');"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 14,
+                    "id": "98456461-0355-4415-961e-5fcebdb111ab",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>count()</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>264</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select count(*) from pdfs"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 15,
+                    "id": "2f86729f-412d-450d-87a4-681570304212",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>id</th>\n      <th>content</th>\n      <th>metadata</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>8d3381b5-db68-4bfd-8090-db82d63625f4</td>\n      <td>SIGNATURE\\r\\nPursuant to the requirements of the Securities Exchange Act of 1934, the Registrant has duly caused this report to be signed on its behalf by the\\r\\nundersigned hereunto duly authorized.\\r\\nDate: May 3, 2024 Apple Inc.\\r\\nBy: /s/ Katherine Adams\\r\\nKatherine Adams\\r\\nSenior Vice President,\\r\\nGeneral Counsel and Secretary</td>\n      <td>{\"source\":\"file:///var/lib/clickhouse/user_files/apple.pdf\",\"chunk_id\":0,\"page_no\":3}</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>afe5da32-246c-4844-80e3-0713b9afce6c</td>\n      <td>and/or maintain the Enhancements. The Board further acknowledges and agrees that (i) the Enhancements confer substantial benefits upon\\r\\nApple and its shareholders; and (ii) Apple’s commitment to adopt, implement, and/or maintain the Enhancements will serve Apple and its\\r\\nshareholders’ best interests and constitutes fair, reasonable and adequate consideration for the release of the Settled Plaintiffs’ Claims.\\r\\n- 6 -\\r\\nEX. B-1 - NOTICE OF PENDENCY AND PROPOSED SETTLEMENT OF SHAREHOLDER DERIVATIVE ACTIONS</td>\n      <td>{\"source\":\"file:///var/lib/clickhouse/user_files/apple.pdf\",\"chunk_id\":2,\"page_no\":70}</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from pdfs limit 2;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "21d4570e-6cd0-4b47-8b36-29c62911c1fe",
+                    "metadata": {},
+                    "source": "### Embeddings\nLangdb supports convenient way to generate embeddings on the fly. You can use the built-in `embed()` function for development and testing. \n\nYou can also use `OpenAI` or other providers."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 16,
+                    "id": "b93bdacd-caa3-4e71-88ca-d1a6b336a89b",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE pdf_embeddings (\n  id UUID,\n  embeddings `Array`(`Float32`)\n) \nengine = MergeTree\norder by id;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "e7d9d198-adc5-4a2c-a1b2-feed15009a03",
+                    "metadata": {},
+                    "source": "Use `embed()` function to generate embeddings for each chunk and store them into `pdf_embeddings` table.\n\nYou can also use `SPAWN TASK` feature to run this in the background. "
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 39,
+                    "id": "b59620cf-89e9-4e73-91af-3623d4353e90",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "INSERT INTO pdf_embeddings\nselect p.id, embed(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id\nwhere p.id != pe.id\norder by p.id;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "6dd50716-bc7c-4f9b-bbc0-b210b5de6f66",
+                    "metadata": {},
+                    "source": "### Vector Search\n\n`Endpoints` let you create acecss endpoints that can be used both for API consumption as well as RAG inputs for LLMs.\n                                                                                                           \nHere we are creating an endpoint named `similar()` to perform a vector search against similar chunks to feed into our LLM model."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 41,
+                    "id": "aeaf8c40-affa-47f8-915f-e150074de4cf",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE ENDPOINT similar(query String \"Query to search similar sections in pdf documents\") AS\nWITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  content, \n  cosineDistance(embeddings, query) AS similarity \nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  similarity DESC \n  LIMIT 5\n"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "f2631f12-e4f5-4c1c-bc6b-92df8aa5fe99",
+                    "metadata": {},
+                    "source": "Sample vector search using `similar()` function:"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 43,
+                    "id": "992bd1dc-97c1-4574-bc19-d20705533b2f",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>id</th>\n      <th>content</th>\n      <th>similarity</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>60fc2fbb-723f-49b9-83c2-dbb38b5ab068</td>\n      <td>execution the Amended Stipulation, nor any proceedings taken pursuant to or in connection with the Amended Stipulation, and/or approval of the\\r\\nSettlement (including any arguments proffered in connection therewith):\\r\\n- 4 -\\r\\n[PROPOSED] FINAL JUDGMENT AND ORDER APPROVING DERIVATIVE ACTION SETTLEMENT</td>\n      <td>0.410379</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>c67d0db2-7e87-48d3-82c9-04547d74cbf2</td>\n      <td>dismissed with prejudice. The Parties shall bear their own costs and expenses, except as otherwise expressly provided in the Amended\\r\\nStipulation and this Judgment.\\r\\n- 3 -\\r\\n[PROPOSED] FINAL JUDGMENT AND ORDER APPROVING DERIVATIVE ACTION SETTLEMENT</td>\n      <td>0.397675</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from similar('Apple liabilities') limit 2"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 45,
+                    "id": "1c01df50-9d0e-4917-a5b0-3291d74f2aba",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>id</th>\n      <th>content</th>\n      <th>similarity</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>d3d08d70-ed03-4bf8-8220-68ad44cecb4e</td>\n      <td>On April 23, 2024, the Federal Court preliminarily approved the Settlement, authorized this Notice to be provided to Apple shareholders, and scheduled\\r\\nthe Settlement Fairness Hearing to consider whether to grant final approval of the Settlement.\\r\\nWHAT ARE THE TERMS OF THE SETTLEMENT?\\r\\nThe full terms and conditions of the Settlement are embodied in the Stipulation, which is on file with the Federal Court. The following is only a\\r\\nsummary of the Stipulation.\\r\\nIn consideration of the full settlement and release of the Settled Plaintiffs’ Claims (defined below) against the Released Defendants’ Parties (defined\\r\\nbelow) and the dismissal with prejudice of the Actions, Defendants and Apple have agreed that Apple shall adopt and implement the corporate governance\\r\\nenhancements identified in Exhibit A to the Stipulation in the time and manner specified therein.</td>\n      <td>0.284785</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>afe5da32-246c-4844-80e3-0713b9afce6c</td>\n      <td>and/or maintain the Enhancements. The Board further acknowledges and agrees that (i) the Enhancements confer substantial benefits upon\\r\\nApple and its shareholders; and (ii) Apple’s commitment to adopt, implement, and/or maintain the Enhancements will serve Apple and its\\r\\nshareholders’ best interests and constitutes fair, reasonable and adequate consideration for the release of the Settled Plaintiffs’ Claims.\\r\\n- 6 -\\r\\nEX. B-1 - NOTICE OF PENDENCY AND PROPOSED SETTLEMENT OF SHAREHOLDER DERIVATIVE ACTIONS</td>\n      <td>0.283581</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from similar('PLEASE NOTE: THERE IS NO PROOF OF CLAIM FORM FOR') limit 2"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "c0988e35-e147-4bcb-89bb-fc4a3e935ff7",
+                    "metadata": {},
+                    "source": "### Model and Prompt Creation\n\nYou can dynamically create models and prompts on the fly using `CREATE` commands that can leverage tools that you have created.\n\n- Here we are attaching `similar` function as a tool.\n- You could also nest queries simply using SQL to hard wire the function chaining. \n"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 49,
+                    "id": "096e95ed-4a8c-4e04-8923-8ab69dbe6e08",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "\nCREATE MODEL legal_assist(\n  input\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT (system \"Use the tool 'similar' to query for similar documents based on user query to assist with quickly searching legal documents.\",\n  human \"{{input}}\")\nTOOLS (similar)\nSETTINGS retries = 1;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "56cad602-18be-4f2d-b8cd-d6bf8e15414c",
+                    "metadata": {},
+                    "source": "### Model executiion\n\nUsing the created model, we can perform `legal_assist()` query that leverages `similar()` tool and responds. \n\nThis can immediately be plugged into the frontends to also provide a chat interface."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 51,
+                    "id": "836434e6-4cce-4ef5-90a0-b8eb934ac94e",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>legal_assist('PLEASE NOTE: THERE IS NO PROOF OF CLAIM FORM FOR')</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>I found some sections in legal documents related to your query \"NO PROOF OF CLAIM FORM\":\\n\\n1. Section about the adoption and maintenance of corporate governance enhancements in relation to shareholder derivative actions settlement.\\n2. Summary of the terms of the settlement agreement between Settled Plaintiffs and Released Defendants' Parties.\\n3. Corporate governance enhancements identified in the Stipulation of the settlement.\\n4. Signature and authorization for a report under the Securities Exchange Act of 1934.\\n\\nIf you need more information or details on any specific section, please let me know!</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select legal_assist('PLEASE NOTE: THERE IS NO PROOF OF CLAIM FORM FOR')"
+                }
+            ],
+            "metadata": {
+                "kernelspec": {
+                    "display_name": "langdb",
+                    "language": "sql",
+                    "name": "langdb"
+                },
+                "language_info": {
+                    "codemirror_mode": "sql",
+                    "file_extension": ".sql",
+                    "mimetype": "text/x-sql",
+                    "name": "sql"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 5
+        },
+        "last_modified": "2024-06-05T00:06:49+05:30",
+        "created_at": "2024-05-18T21:29:02+08:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/PDF%20extraction%20&%20RAG%20using%20LangDB.ipynb",
+        "tags": [
+            "Agent"
+        ]
+    },
+    {
+        "title": "Strucutured Layout Extraction from PDFs and Images",
+        "content": {
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "id": "a5654363-7492-4a01-8959-b8c5e40e3c75",
+                    "metadata": {},
+                    "source": "# Structured Extracton\nWe have already covered extracting semantic text chunks from PDF documents  but often times we ll have to work with images and preseve the layout to make the best out of LLMs. In this article we ll go through the following\n\n- Loading PDF tables\n- Querying table schemas\n- Transposing into structured tables. "
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "72a84c66-2b64-4cdb-97f1-ecf475974250",
+                    "metadata": {},
+                    "source": "For this example lets use wikipidea's [The world's billionaires'](https://en.wikipedia.org/wiki/The_World%27s_Billionaires) data set. \nWe want to extract the table in the 2024 section. Let's get started."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 34,
+                    "id": "5704f901-686e-4994-bcaf-daacd94ff7d3",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE pdf_blocks_billionaires\nENGINE = Memory AS\nselect * from parse_document (\n    pages=> [2], \n    'https://en.wikipedia.org/api/rest_v1/page/pdf/The_World%27s_Billionaires'\n)"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "f23f8de2-aca1-48e8-9518-3ae25d5df466",
+                    "metadata": {},
+                    "source": "This extracts structured information from the pdf with layout information. "
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 35,
+                    "id": "707694c2-097c-4844-8540-93e0df7f262a",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>page</th>\n      <th>block_type</th>\n      <th>count(block_type)</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>0</td>\n      <td>LAYOUT_TEXT</td>\n      <td>1</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>0</td>\n      <td>LAYOUT_TABLE</td>\n      <td>1</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>0</td>\n      <td>LAYOUT_SECTION_HEADER</td>\n      <td>1</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select page, block_type, count(block_type) from pdf_blocks_billionaires \n    where block_type like 'LAYOUT%' \n    group by page, block_type;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "e5b06690-3d0e-4275-a3d1-53c5d3695735",
+                    "metadata": {},
+                    "source": "Lets now extract a structured table from this block and transpose. "
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 37,
+                    "id": "e376c8a1-6162-4600-9d5d-de7d4218b9d4",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>table_index</th>\n      <th>schema</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>0</td>\n      <td>`Primary source(s) of wealth` String,`Net worth (USD)` String,`No.` String,`Nationality` String,`Name` String,`Age` String</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from show_parsed_schemas((select * from pdf_blocks_billionaires)) where schema<> ''"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 39,
+                    "id": "9d9b0777-951d-4f6f-b7b1-e3c8de624919",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>No.</th>\n      <th>Name</th>\n      <th>Age</th>\n      <th>Net worth (USD)</th>\n      <th>Nationality</th>\n      <th>Primary source(s) of wealth</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td></td>\n      <td></td>\n      <td></td>\n      <td></td>\n      <td></td>\n      <td></td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>75</td>\n      <td>1</td>\n      <td>LVMH</td>\n      <td>Bernard Amault &amp; family</td>\n      <td>France</td>\n      <td>$233 billion</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>52</td>\n      <td>2 -</td>\n      <td>Tesla, SpaceX, Twitter (Currently</td>\n      <td>Elon Musk</td>\n      <td>South Africa Canada United States</td>\n      <td>$195 billion</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>60</td>\n      <td>3</td>\n      <td>Amazon</td>\n      <td>Jeff Bezos</td>\n      <td>United States</td>\n      <td>$194 billion</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>39</td>\n      <td>4 A</td>\n      <td>Meta Platforms</td>\n      <td>Mark Zuckerberg</td>\n      <td>United States</td>\n      <td>$177 billion</td>\n    </tr>\n    <tr>\n      <th>5</th>\n      <td>79</td>\n      <td>5</td>\n      <td>Oracle Corporation</td>\n      <td>Larry Ellison</td>\n      <td>United States</td>\n      <td>$141 billion</td>\n    </tr>\n    <tr>\n      <th>6</th>\n      <td>93</td>\n      <td>6</td>\n      <td>Berkshire Hathaway</td>\n      <td>Warren Buffett</td>\n      <td>United States</td>\n      <td>$133 billion</td>\n    </tr>\n    <tr>\n      <th>7</th>\n      <td>68</td>\n      <td>7</td>\n      <td>Microsoft</td>\n      <td>Bill Gates</td>\n      <td>United States</td>\n      <td>$128 billion</td>\n    </tr>\n    <tr>\n      <th>8</th>\n      <td>68</td>\n      <td>8 A</td>\n      <td>Microsoft</td>\n      <td>Steve Ballmer</td>\n      <td>United States</td>\n      <td>$121 billion</td>\n    </tr>\n    <tr>\n      <th>9</th>\n      <td>65</td>\n      <td>9</td>\n      <td>Reliance Industries</td>\n      <td>Mukesh Ambani</td>\n      <td>India</td>\n      <td>$116 billion</td>\n    </tr>\n    <tr>\n      <th>10</th>\n      <td>51</td>\n      <td>10</td>\n      <td>Google</td>\n      <td>Larry Page</td>\n      <td>United States</td>\n      <td>$114 billion</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from transpose_parsed_tables(table_index => 0, (select * from pdf_blocks_billionaires))"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "2e789a4c-2b65-4d66-9b50-544070d25678",
+                    "metadata": {},
+                    "source": "Check out the original table from the wikipedia page. As mentioned in other articles you can mix and match structured and \nunstructured data and use `pretty_print` function to feed data to the LLMs.\n\nYou can also directly convert this as a markdown using the schema provided to feed the entire document with layout to LLMs"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 41,
+                    "id": "cdaa3c94-dc32-4f8c-a4ee-45c8e2b2baa3",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>content</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>| Net worth (USD) | Primary source(s) of wealth | No.          | Name | Age                               | Nationality                       |\\n|-----------------|-----------------------------|--------------|------|-----------------------------------|-----------------------------------|\\n| null            | null                        | null         | null | null                              | null                              |\\n| 1               | Bernard Amault &amp; family     | $233 billion | 75   | France                            | LVMH                              |\\n| 2 -             | Elon Musk                   | $195 billion | 52   | South Africa Canada United States | Tesla, SpaceX, Twitter (Currently |\\n| 3               | Jeff Bezos                  | $194 billion | 60   | United States                     | Amazon                            |\\n| 4 A             | Mark Zuckerberg             | $177 billion | 39   | United States                     | Meta Platforms                    |\\n| 5               | Larry Ellison               | $141 billion | 79   | United States                     | Oracle Corporation                |\\n| 6               | Warren Buffett              | $133 billion | 93   | United States                     | Berkshire Hathaway                |\\n| 7               | Bill Gates                  | $128 billion | 68   | United States                     | Microsoft                         |\\n| 8 A             | Steve Ballmer               | $121 billion | 68   | United States                     | Microsoft                         |\\n| 9               | Mukesh Ambani               | $116 billion | 65   | India                             | Reliance Industries               |\\n| 10              | Larry Page                  | $114 billion | 51   | United States                     | Google                            |\\n ## 2023\\n In the 37th annual Forbes list of the world's billionaires, the list included 2,640 billionaires with a total net\\n wealth of $12.2 trillion, down 28 members and $500 billion from 2022. Over half of the list is less wealthy\\n compared to the previous year, including Elon Musk, who fell from No. 1 to No. 2. [7] The list also marks\\n for the first time a French citizen was in the top position as well as a non-American for the first time since\\n 2013 when the Mexican Carlos Slim Helu was the world's richest person. The list, like in 2022. counted 15\\n under 30 billionaires with the richest of them being Red Bull heir Mark Mateschitz with a net worth of\\n $34.7 billion. The youngest of the lot were Clemente Del Vecchio, heir to the Luxottica fortune shared with\\n his six siblings and stepmother, and Kim Jung-yang, whose fortune lies in Japanese-South Korean gaming\\n giant Nexon, both under-20s.(11)\\n</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from print_parsed_markdown((select * from pdf_blocks_billionaires))"
+                }
+            ],
+            "metadata": {
+                "kernelspec": {
+                    "display_name": "langdb",
+                    "language": "sql",
+                    "name": "langdb"
+                },
+                "language_info": {
+                    "codemirror_mode": "sql",
+                    "file_extension": ".sql",
+                    "mimetype": "text/x-sql",
+                    "name": "sql"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 5
+        },
+        "last_modified": "2024-05-27T21:45:39+05:30",
+        "created_at": "2024-05-20T23:51:18+08:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Strucutured%20Layout%20Extraction%20from%20PDFs%20and%20Images.ipynb",
+        "tags": [
+            "Agent"
+        ]
+    },
+    {
+        "title": "CRAG",
+        "content": {
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "id": "57d965f0-a293-4d32-b46b-dd144faa4ea7",
+                    "metadata": {},
+                    "source": "# Corrective RAG powered by LangDB"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "f3a1b1a6-667c-4b5f-ae52-bfa69a31e535",
+                    "metadata": {},
+                    "source": "#### Introduction"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "a77c719a-3fc3-418c-9df7-def1583b062c",
+                    "metadata": {},
+                    "source": "Corrective Retrieval Augmented Generation (CRAG) is an advanced method that enhances the accuracy and relevance of responses generated by AI systems through a combination of retrieval and generation techniques. This approach aims to improve the effectiveness of retrieval-augmented generation models by incorporating corrective mechanisms. These mechanisms ensure that the documents used for generating answers are highly relevant and contextually appropriate. The original paper detailing CRAG can be found [here](https://arxiv.org/pdf/2401.15884).\n\nBelow is an explanation of CRAG, including its components."
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "f76fdc09-6ea9-4db6-a22e-845489ea9b7e",
+                    "metadata": {},
+                    "source": "#### Create tables and insert data"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "226be4e4-15ab-41c5-a83b-0e00f836af3f",
+                    "metadata": {},
+                    "source": "For CRAG, we will use two data sources. The first data source will consist of articles by the most popular authors from Wikipedia."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 1,
+                    "id": "b23a9bbe-c702-4b06-82a2-5b4c535d8616",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE pdf_links\n(\n    link `String`\n) engine = MergeTree\norder by link;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 2,
+                    "id": "f8e5b6ab-8112-4bbd-99a2-2f6c60820ac0",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE pdf_contents (\n    id `Int64`,\n    content `String`,\n    link `String`\n)\nENGINE = MergeTree\nORDER BY content;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 3,
+                    "id": "5cfa35cf-8ee5-4033-99ad-f68486ce57b1",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "INSERT INTO pdf_links VALUES\n  ('https://en.wikipedia.org/api/rest_v1/page/html/William_Shakespeare'),\n  ('https://en.wikipedia.org/api/rest_v1/page/html/Agatha_Christie'),\n  ('https://en.wikipedia.org/api/rest_v1/page/html/Barbara_Cartland'),\n  ('https://en.wikipedia.org/api/rest_v1/page/html/Danielle_Steel'),\n  ('https://en.wikipedia.org/api/rest_v1/page/html/Harold_Robbins');"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 4,
+                    "id": "ffa06530-1359-431a-a325-049c1d14f09e",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "INSERT INTO pdf_contents(link, content)\nSELECT * FROM (SELECT JSONExtractString(metadata, 'link'), arrayStringConcat(groupArray(content), '')\nFROM load_html((SELECT link FROM pdf_links))\nGROUP BY JSONExtractString(metadata, 'link'));\n"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "bb61d335-4c37-4fc4-9ccf-0ff6d93cfbe2",
+                    "metadata": {},
+                    "source": "Second data source will popQA dataset. This dataset will be used as fallback option."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 5,
+                    "id": "d8eef37c-753c-465e-8f25-2a6265426253",
+                    "metadata": {
+                        "is_executing": true
+                    },
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE popqa\nENGINE = Memory AS\nSELECT *\nFROM url('https://raw.githubusercontent.com/AlexTMallen/adaptive-retrieval/main/data/popQA.tsv', TSV)"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 6,
+                    "id": "1e8f6ade-5804-44df-898e-321a94877900",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>id</th>\n      <th>subj</th>\n      <th>prop</th>\n      <th>obj</th>\n      <th>subj_id</th>\n      <th>prop_id</th>\n      <th>obj_id</th>\n      <th>s_aliases</th>\n      <th>o_aliases</th>\n      <th>s_uri</th>\n      <th>o_uri</th>\n      <th>s_wiki_title</th>\n      <th>o_wiki_title</th>\n      <th>s_pop</th>\n      <th>o_pop</th>\n      <th>question</th>\n      <th>possible_answers</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>4222362</td>\n      <td>George Rankin</td>\n      <td>occupation</td>\n      <td>politician</td>\n      <td>1850297</td>\n      <td>22</td>\n      <td>2834605</td>\n      <td>\"[\"\"George James Rankin\"\"]\"</td>\n      <td>\"[\"\"political leader\"\",\"\"political figure\"\",\"\"polit.\"\",\"\"pol\"\"]\"</td>\n      <td>http://www.wikidata.org/entity/Q5543720</td>\n      <td>http://www.wikidata.org/entity/Q82955</td>\n      <td>George Rankin</td>\n      <td>Politician</td>\n      <td>142</td>\n      <td>25692</td>\n      <td>What is George Rankin's occupation?</td>\n      <td>\"[\"\"politician\"\", \"\"political leader\"\", \"\"political figure\"\", \"\"polit.\"\", \"\"pol\"\"]\"</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>4725190</td>\n      <td>John Mayne</td>\n      <td>occupation</td>\n      <td>journalist</td>\n      <td>2079053</td>\n      <td>22</td>\n      <td>663400</td>\n      <td>[]</td>\n      <td>\"[\"\"journo\"\",\"\"journalists\"\"]\"</td>\n      <td>http://www.wikidata.org/entity/Q6247345</td>\n      <td>http://www.wikidata.org/entity/Q1930187</td>\n      <td>John Mayne</td>\n      <td>Journalist</td>\n      <td>236</td>\n      <td>24952</td>\n      <td>What is John Mayne's occupation?</td>\n      <td>\"[\"\"journalist\"\", \"\"journo\"\", \"\"journalists\"\"]\"</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>4382392</td>\n      <td>Henry Feilden</td>\n      <td>occupation</td>\n      <td>politician</td>\n      <td>1925450</td>\n      <td>22</td>\n      <td>2834605</td>\n      <td>\"[\"\"Henry Master Feilden\"\"]\"</td>\n      <td>\"[\"\"political leader\"\",\"\"political figure\"\",\"\"polit.\"\",\"\"pol\"\"]\"</td>\n      <td>http://www.wikidata.org/entity/Q5725578</td>\n      <td>http://www.wikidata.org/entity/Q82955</td>\n      <td>Henry Feilden (Conservative politician)</td>\n      <td>Politician</td>\n      <td>58</td>\n      <td>25692</td>\n      <td>What is Henry Feilden's occupation?</td>\n      <td>\"[\"\"politician\"\", \"\"political leader\"\", \"\"political figure\"\", \"\"polit.\"\", \"\"pol\"\"]\"</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>4822110</td>\n      <td>Kathy Saltzman</td>\n      <td>occupation</td>\n      <td>politician</td>\n      <td>2122743</td>\n      <td>22</td>\n      <td>2834605</td>\n      <td>[]</td>\n      <td>\"[\"\"political leader\"\",\"\"political figure\"\",\"\"polit.\"\",\"\"pol\"\"]\"</td>\n      <td>http://www.wikidata.org/entity/Q6377295</td>\n      <td>http://www.wikidata.org/entity/Q82955</td>\n      <td>Kathy Saltzman</td>\n      <td>Politician</td>\n      <td>127</td>\n      <td>25692</td>\n      <td>What is Kathy Saltzman's occupation?</td>\n      <td>\"[\"\"politician\"\", \"\"political leader\"\", \"\"political figure\"\", \"\"polit.\"\", \"\"pol\"\"]\"</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>4011112</td>\n      <td>Eleanor Davis</td>\n      <td>occupation</td>\n      <td>cartoonist</td>\n      <td>1752619</td>\n      <td>22</td>\n      <td>68412</td>\n      <td>\"[\"\"Eleanor McCutcheon Davis\"\"]\"</td>\n      <td>\"[\"\"graphic artist\"\",\"\"animator\"\",\"\"illustrator\"\"]\"</td>\n      <td>http://www.wikidata.org/entity/Q5354261</td>\n      <td>http://www.wikidata.org/entity/Q1114448</td>\n      <td>Eleanor Davis</td>\n      <td>Cartoonist</td>\n      <td>317</td>\n      <td>9649</td>\n      <td>What is Eleanor Davis's occupation?</td>\n      <td>\"[\"\"cartoonist\"\", \"\"graphic artist\"\", \"\"animator\"\", \"\"illustrator\"\"]\"</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from popqa limit 5"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "3df08e2a-3c44-4ce4-96c0-56992cd16eee",
+                    "metadata": {},
+                    "source": "### Embeddings\nLangdb supports convenient way to generate embeddings on the fly. You can use the built-in `embed()` function for development and testing. \n\nYou can also use `OpenAI` or other providers."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 7,
+                    "id": "bdbc0fdc-de32-4ab7-808a-b6c4dfc2e717",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE embeddings_fallback_data (\n  id `Int64`,\n  embeddings `Array`(`Float32`),\n  question `String`\n) \nENGINE = MergeTree\nORDER BY id;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "85125864-c635-41c2-8665-778b77517d00",
+                    "metadata": {},
+                    "source": "#### Spawn task\nSpawn tasks to periodically calculate and insert embeddings for new questions into the fallback data embeddings table every 5 seconds"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 8,
+                    "id": "9c01c3e3-efdc-42d7-bc2e-a989c68577c3",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": "Spawned Task: generate_embeddings with id: e7e53c63-92b6-4b10-9e92-ccb8a94f3986"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "SPAWN TASK generate_embeddings\n    BEGIN\nINSERT INTO embeddings_fallback_data\nSELECT p.id, embed(question), p.question \nFROM popqa AS p \nLEFT JOIN embeddings_fallback_data AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id\nLIMIT 10\nEND EVERY 5 second;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "9111fd4f-d40f-417d-925b-79bd43e8dd1c",
+                    "metadata": {},
+                    "source": "#### Retrieval evaluator "
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "74614d40-3cfe-4d2c-ba2a-295e058a8bad",
+                    "metadata": {},
+                    "source": "In the CRAG implementation, all documents are evaluated to filter out only the relevant ones. This process involves creating a prompt, model, and endpoint that return only the filtered documents."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 13,
+                    "id": "2b612137-5c39-4ed5-b3f5-5b7c70241871",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE MODEL retrieval_evaluator (\n    question,\n    document\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT ( system \"\nGiven a question, does the following document have exact\ninformation to answer the question?\nQuestion: {{question}}\nDocument: {{document}}\nThink Step by step, and answer with yes or no only\");"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 14,
+                    "id": "f1898f5c-d35e-42e1-ab29-ceaa5a48a133",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE ENDPOINT get_correct_documents(question String) AS \n (with tbl as (\n    select id, content, retrieval_evaluator($question, content) answer from pdf_contents\n)\nselect id, answer, content\nfrom tbl where positionCaseInsensitive(answer, 'yes') > 0)\nCOMMENT 'Endpoint to get the relevant document to the question';"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "e66f9d2a-5488-4753-b8d2-1d45339e81a7",
+                    "metadata": {},
+                    "source": "#### Fallback data source model and prompt\n\nFor the fallback data source, we are using the popQA dataset. Based on the question, we attempt to find an answer with a similarity score within a defined threshold. The similarity score is calculated using the cosine distance between the embeddings of questions in dataset and the embedding of the asked question. If a suitable answer is found, it can be returned to the user."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 24,
+                    "id": "3760c739-0032-4aa6-ad68-ea2cb1593c65",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": "Model already present"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE MODEL evaluator(\n    question,\n    answer,\n    score\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT (system \"Given a question and possible answer respond if it is relevant or not. \nAnswer 'yes' if the score is below 0.1. If score is not provided, return 'no'.\nPlease use 'yes' or 'no' as the answer. \nquestion: {{question}}\npossible answer: {{answer}}\nsimilarity score: {{score}}\");"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 30,
+                    "id": "fed4274a-7701-4c26-90b3-5750e993374a",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE ENDPOINT evaluator(question String, answer String, score String) AS\nSELECT evaluator($question, $answer, $score);"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 18,
+                    "id": "9cd4400a-2f6f-49de-822d-391a7ae8022b",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE ENDPOINT endpoint_fallback_data(question String \"Query to search question\") AS\n(WITH tbl AS (\n  SELECT CAST(embed($question) AS `Array`(`Float32`)) AS question_embed\n)\nSELECT cosineDistance(embeddings, question_embed) AS similarity, p.id, p.possible_answers\nFROM embeddings_fallback_data AS pe\nJOIN popqa AS p ON p.id = pe.id\nCROSS JOIN tbl\nORDER BY similarity \nLIMIT 10)\nCOMMENT 'Returns top 10 results for the given query with similarity, id, and possible_answers';"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 19,
+                    "id": "5ece7b15-e47f-4492-90a3-a9d76e5e7e11",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE ENDPOINT retrieval_evaluator(question String, document String) AS\n(SELECT retrieval_evaluator($question, $document))\nCOMMENT 'Endpoint for evaluating the relevancy of an question and document';"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 20,
+                    "id": "febdc488-db34-434f-8ecd-6cc36f808574",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE MODEL IF NOT EXISTS fallback_model (\n  input\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT (system \"Given a question, find the document relevant to the question and return possible answers and similarity scores. \nQuestion: {{input}}\")\nTOOLS (endpoint_fallback_data)\nSETTINGS retries = 1;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "58745259-33c5-4e41-8211-8482d29c6bb8",
+                    "metadata": {},
+                    "source": "#### Main model\n\nThe main model attempts to find an answer in Wikipedia articles. It uses the get_correct_documents tool, which was designed to retrieve only relevant documents. If no relevant documents are found, the model then attempts to use the fallback data source.\n"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 26,
+                    "id": "d92ea750-82df-42a8-9814-4a69b9bd34ac",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": "Model already present"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE MODEL main(\n    question\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT (system \"Given a question, try to find a relevant answer based on relavent documents. \nRelevant documents can be fetched with get_correct_documents tool.\nIf you cannot get any document, try to use the fallback data source.\nFallback data source can only be used if the main data source doesn't provide a relevant answer.\nYou must verify the answer with the evaluator. If the evaluator returns 'no', do not provide an answer to the user.\nquestion: {{question}}\")\nTOOLS (get_correct_documents, endpoint_fallback_data, evaluator)\nSETTINGS retries = 1;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 31,
+                    "id": "8b8ddd56-fbbd-4f55-93f4-67cab71c9510",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>main('Who written hamlet?')</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>The play \"Hamlet\" was written by William Shakespeare.</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "SELECT main('Who written hamlet?')"
+                }
+            ],
+            "metadata": {
+                "kernelspec": {
+                    "display_name": "langdb",
+                    "language": "sql",
+                    "name": "langdb"
+                },
+                "language_info": {
+                    "codemirror_mode": "sql",
+                    "file_extension": ".sql",
+                    "mimetype": "text/x-sql",
+                    "name": "sql"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 5
+        },
+        "last_modified": "2024-06-05T13:33:28+05:30",
+        "created_at": "2024-05-20T14:19:26+03:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/CRAG.ipynb",
+        "tags": [
+            "Agent"
+        ]
+    },
+    {
+        "title": "Sentinment Analysis Part 1",
+        "content": {
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "id": "95c8f8bd-907f-41d2-abe9-396402b86712",
+                    "metadata": {},
+                    "source": "# Sentiment Analysis using LLMs - Part 1\n\nThis example provides a very quick overview of LangDB functionality."
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "7f96c55a-03c1-4d52-9a72-e7fabf71622e",
+                    "metadata": {},
+                    "source": "## Step 1: Prepping the tables\n- Create products data\n- Create customer_reviews data"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 1,
+                    "id": "22a71707-8a92-4e7f-8ed1-a66b51dbbae8",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE products (\n    product_id UInt32,\n    product_name String\n) ENGINE = MergeTree\nORDER BY product_id;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 2,
+                    "id": "06eab2f3-fc56-4bda-8645-969d28fb209d",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE customer_reviews (\n    review_id UInt32,\n    product_id UInt32,\n    customer_id UInt32,\n    review_date Date,\n    review_text String,\n    rating UInt8,\n    location String\n) ENGINE = MergeTree\nORDER BY review_id;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 3,
+                    "id": "b6709838-8068-4f75-9751-0351a3dd6e34",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "INSERT INTO products (product_id, product_name) VALUES \n(1, 'Product A'),\n(2, 'Product B'),\n(3, 'Product C');"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 4,
+                    "id": "de5038ad-250c-413d-853c-5e7f5f32043f",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "INSERT INTO customer_reviews (product_id, customer_id, review_date, review_text, rating, location) VALUES \n(1, 101, '2024-05-01', 'This product is fantastic! Highly recommend it.', 5, 'New York, NY'),\n(2, 102, '2024-05-02', 'Not worth the money. Poor quality.', 2, 'Los Angeles, CA'),\n(1, 103, '2024-05-03', 'Good value for the price. Satisfied with my purchase.', 4, 'Chicago, IL'),\n(2, 104, '2024-05-04', 'Terrible customer service and the product broke after a week.', 1, 'Houston, TX'),\n(3, 105, '2024-05-05', 'Excellent product! Will buy again.', 5, 'Phoenix, AZ');\n"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 8,
+                    "id": "a08ca912-ff08-4ff3-830c-b5b9defd6761",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>product_id</th>\n      <th>no_reviews</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>3</td>\n      <td>1</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>2</td>\n      <td>2</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>1</td>\n      <td>2</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select product_id, count(product_id) as no_reviews from products as p join customer_reviews as cr on cr.product_id = p.product_id  \ngroup by product_id"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "a5f39f1a-c901-4ce4-9a4d-70f4e0c13f78",
+                    "metadata": {},
+                    "source": "## Step 2: Create Model and Prompt"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 16,
+                    "id": "684fdfad-a102-4ac4-bff2-10732234a6a7",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE PROMPT customer_review_pt (\n  system \"You are an AI assistant. Look at the provided review and return average sentiment score for the review.\n    Strictly only return a number between 1 and 5 as a value without any description.\n    \",\n  human \"{{review}}\"\n);"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 17,
+                    "id": "6859d0f7-1725-4b96-ab86-5cb65253ab0c",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE MODEL review(\n    review\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT customer_review_pt;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "ed75c900-9eab-4adf-8944-003074d2b36e",
+                    "metadata": {},
+                    "source": "That's all you needed you can run your query as if you would use any function. \n\nLet's run it on one row and test the result"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 22,
+                    "id": "bce011c1-fe7d-4729-8a01-7d34790a1df7",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>product_review</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>5</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select toInt32(review('This product is fantastic! Highly recommend it.', 5, 'New York, NY')) as product_review"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 21,
+                    "id": "c99b8953-5b31-4b60-a0a3-3ecf582eb738",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>p.product_id</th>\n      <th>product_name</th>\n      <th>avg_sentiment_score</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>3</td>\n      <td>Product C</td>\n      <td>5.0</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>1</td>\n      <td>Product A</td>\n      <td>4.5</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>2</td>\n      <td>Product B</td>\n      <td>1.5</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "SELECT \n    p.product_id, \n    p.product_name,  \n    AVG(toInt32(review(cr.review_text))) as avg_sentiment_score\nFROM  \n    customer_reviews cr   \nJOIN \n    products p \nON \n    cr.product_id = p.product_id   \nGROUP BY \n    p.product_id, p.product_name   \nORDER BY \n    avg_sentiment_score DESC;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "6c9cef3b-049b-4779-a31e-bed874dafc9e",
+                    "metadata": {},
+                    "source": "## Why is this a big deal ?\n\nWell you might be thinking sentiment analysis has been around for ages and LLMs can be extremely slow for the purpose. So let's make this an interesting example. So far even though it worked great, we are only passing one row at a time which will translate into many number of API calls and too much slowness.\n\n**New Approach**\n- Send batch of 10 rows at a time leveraging `pretty_print()` function.\n- Store intermediate results and create an `Endpoint` for accessing averages so LLM can have a history of deviations\n- Instruct LLM to lag out specific extreme reviews that deviate too much for a product in a response.\n- Meanwhile also calculate the review.\n- Lets also generate reasonable sized data to get some interesting insights.\n\nModels will keep getting better in the AI world and LangDB gives you a way to dynamically combine RAG and models in a easy way to create many exciting applications.\n\nAs this post has become already too long, lets continue this in a separate post (Part 2). \n\n"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "64744ed4-5971-4863-b17e-3783c6d6269c",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": ""
+                }
+            ],
+            "metadata": {
+                "kernelspec": {
+                    "display_name": "langdb",
+                    "language": "sql",
+                    "name": "langdb"
+                },
+                "language_info": {
+                    "codemirror_mode": "sql",
+                    "file_extension": ".sql",
+                    "mimetype": "text/x-sql",
+                    "name": "sql"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 5
+        },
+        "last_modified": "2024-06-04T23:49:55+05:30",
+        "created_at": "2024-05-20T13:49:42+08:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Sentinment%20Analysis%20Part%201.ipynb",
+        "tags": [
+            "Agent"
+        ]
+    },
+    {
+        "title": "Combining Insights from Structured and Unstructured Data",
+        "content": {
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "id": "328cb4cb-509e-4411-8bd4-dadf4edd49c9",
+                    "metadata": {},
+                    "source": "# Combining Structured and Unstructured Data\nWe will recreate an example use case from [LlamaIndex](https://docs.llamaindex.ai/en/stable/examples/query_engine/SQLJoinQueryEngine/).\nIn this example, we will create a model that will combine insights from structured data (SQL tables) and unstructured data (Wikipedia articles) to answer user queries. "
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "79a79bad-184c-4a98-bf42-4ecf5149d7c8",
+                    "metadata": {},
+                    "source": "## Schema Creation and Loading Data\nWe first create a cities table which contains information about different cities regarding their geographic location, population and country in which they are located.\n"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "6940163f-1096-4b9d-a6d4-acc5f6fe4076",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE TABLE cities (\n\t`id` UUID DEFAULT generateUUIDv4(),\n\t`city` String,\n\t`lat` Decimal64(3),\n\t`lng` Decimal64(3),\n\t`country` String,\n\t`population` UInt64\n) engine = MergeTree\nORDER BY id;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "68d69dfd-1194-43d9-a806-431509cbb045",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "INSERT INTO cities(city, lat, lng, country, population) VALUES\n    ('Tokyo','35.6897','139.6922','Japan','37732000'),\n    ('Jakarta','-6.1750','106.8275','Indonesia','33756000'),\n    ('Delhi','28.6100','77.2300','India','32226000'),\n    ('Manila','14.5958','120.9772','Philippines','24922000'),\n    ('Dhaka','23.7639','90.3889','Bangladesh','18627000'),\n    ('Beijing','39.9067','116.3975','China','18522000'),\n    ('Moscow','55.7558','37.6172','Russia','17332000'),\n    ('Karachi','24.8600','67.0100','Pakistan','15738000'),\n    ('Ho Chi Minh City','10.7756','106.7019','Vietnam','15136000'),\n    ('Singapore','1.3000','103.8000','Singapore','5983000'),\n    ('Tashkent','41.3111','69.2797','Uzbekistan','2956384'),\n    ('Phnom Penh','11.5694','104.9211','Cambodia','2129371'),\n    ('Bishkek','42.8747','74.6122','Kyrgyzstan','1120827'),\n    ('Tbilisi','41.7225','44.7925','Georgia','1118035'),\n    ('Sri Jayewardenepura Kotte','6.9108','79.8878','Sri Lanka','115826');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "0b527626-271b-47cf-b9a5-270d44e10934",
+                    "metadata": {},
+                    "source": "## Loading the PDFs\nWe create a `pdfs` table to store the PDFs containing information about the cities, obtained from Wikipedia.\nWe extract semantically chunked data from the PDFs using built-in function, `load_pdf_text()`, and insert into the tables."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "31beea1f-1388-469f-bd36-2944ece96c97",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE TABLE pdf_links (\n\t`city` String,\n\t`link` String\n) engine = MergeTree\norder by city;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "c523ce6a-9f4c-43cd-9f47-e4bda8f97ef1",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE TABLE pdfs (\n  `id` UUID DEFAULT generateUUIDv4(),\n  `content` String, \n  `metadata` String, \n  `city` String\n) engine = MergeTree\norder by (id, content);"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "1337530a-de00-4831-bf51-b7ceeb117481",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "INSERT INTO pdf_links(city, link) VALUES\n    ('Beijing','https://en.wikipedia.org/api/rest_v1/page/pdf/Beijing'),\n    ('Tokyo','https://en.wikipedia.org/api/rest_v1/page/pdf/Tokyo'),\n    ('Jakarta','https://en.wikipedia.org/api/rest_v1/page/pdf/Jakarta'),\n    ('Delhi','https://en.wikipedia.org/api/rest_v1/page/pdf/New_Delhi'),\n    ('Manila','https://en.wikipedia.org/api/rest_v1/page/pdf/Manila'),\n    ('Dhaka','https://en.wikipedia.org/api/rest_v1/page/pdf/Dhaka'),\n    ('Moscow','https://en.wikipedia.org/api/rest_v1/page/pdf/Moscow'),\n    ('Karachi','https://en.wikipedia.org/api/rest_v1/page/pdf/Karachi'),\n    ('Singapore','https://en.wikipedia.org/api/rest_v1/page/pdf/Singapore'),\n    ('Tashkent','https://en.wikipedia.org/api/rest_v1/page/pdf/Tashkent'),\n    ('Phnom Penh','https://en.wikipedia.org/api/rest_v1/page/pdf/Phnom_Penh'),\n    ('Bishkek','https://en.wikipedia.org/api/rest_v1/page/pdf/Bishkek'),\n    ('Tbilisi','https://en.wikipedia.org/api/rest_v1/page/pdf/Tbilisi'),\n    ('Sri Jayewardenepura Kotte','https://en.wikipedia.org/api/rest_v1/page/pdf/Sri_Jayawardenepura_Kotte'),\n    ('Ho Chi Minh City','https://en.wikipedia.org/api/rest_v1/page/pdf/Ho_Chi_Minh_City');"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "d1f1e71b-3e0a-4907-9f60-c0b951959592",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "INSERT INTO pdfs(content, metadata, city) \nSELECT content, metadata, JSONExtractString(metadata,'city')\nFROM load_pdf_text((SELECT link, city from pdf_links));"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "c66fe141-8a03-4231-ba8f-cde076b3980f",
+                    "metadata": {},
+                    "source": "## Embeddings\nLangDB offers a convenient method to generate embeddings using the built-in `embed()` function for development and testing purposes. Additionally, we can integrate with OpenAI or other providers to generate embeddings."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "f1341902-dad1-4b4e-9511-227ee039ec50",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE TABLE pdf_embeddings (\n  id UUID,\n  embeddings `Array`(`Float32`),\n) \nengine = MergeTree\norder by id;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "6c47e390-05cd-4dc8-9379-f14686f60d38",
+                    "metadata": {},
+                    "source": "While we can use `embed()` to generate embeddings for each chunk and store them, we can also run the whole process in background using `SPAWN TASK` which essentially creates a cron job."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 11,
+                    "id": "3d386558-b4cd-477b-b4c8-51aab12261ec",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": "Spawned Task: generate_embeddings with id: ab41c508-86ce-4e1d-aa24-64474b7dc8eb"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "SPAWN TASK generate_embeddings\n    BEGIN\nINSERT INTO pdf_embeddings\nselect p.id, embed(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id\nwhere p.id != pe.id\norder by p.id\nlimit 10\nEND EVERY 5 second;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "7ee88a0c-96ca-4177-bcc9-b11176e3224f",
+                    "metadata": {},
+                    "source": "## Endpoint Creation\nFirst, we create two endpoints which utilize vector search to find relevant chunks. While the first the endpoint can be utilized to find information when the city is not known, the second endpoint can be used to query about a specific city."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 1,
+                    "id": "3d554b8a-ad85-4aab-8ef8-8191fd19b30c",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE ENDPOINT cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'get information about cities';"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 2,
+                    "id": "849cfb48-8dba-4c76-847b-6238825654fa",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE ENDPOINT cities_info_specific(\n  city_name String \"name of the city\", \n  query String \"a description of the information to look up about the city specified in the city_name parameter\"\n) AS\n(WITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nWHERE city = $city_name\nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'Get information about a specific city';"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "b1dc2054-453d-4e49-94b5-a4976740b655",
+                    "metadata": {},
+                    "source": "We create another tool, `get_semantics`, which uses the built-in table function `semantics()`, which returns the schemas of all the tables in the database."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "eb8b7f96-ee30-48da-b6cf-2f087c6aa043",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE ENDPOINT get_semantics() AS \n(SELECT * FROM semantics())\nCOMMENT 'Schemas of all the tables';"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "d899d635-0429-43e5-b5cd-ea31d111f1ea",
+                    "metadata": {},
+                    "source": "## Prompt Creation\nWe create a prompt for our use case based on the ReAct framework."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "3aa99f12-9aaf-4ce5-88b3-35380df34592",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROMPT cities_prompt (\n  system \"You are a master data agent. Your task is to provide useful information to the user about a city based on the question.\n\n  Only use information retrieved using the supplied tools.\n  \n  For doing this, first, fetch the schema of the tables in the database using the get_semantics tool. Understand the schema of the cities table thoroughly to understand the kind of information you can look up using a SQL query on the provided database. If required, generate a valid Clickhouse SQL query to get any required information from the cities table and use the langdb_raw_query to execute that query and get the result.\n\n  You can retrieve information regarding cities using either cities_info_specific and/or cities_info_generic tool. Both the tools use similarity search based on cosine distance to return the most relevant information snippets related to the query.\n  1. When you can cities_info_specific tool: If the required city is known or was looked up using a SQL query, use this tool to retrieve information about that specific city.\n\n  2. When you can cities_info_generic tool:\n  Use this tool to look up the information when the city is not known and you are not able to use a SQL query to find the required city.\n  \n  Use the following format:\n  Question: the input question you must answer\n  Thought: you should always think about what to do\n  Action: the action to take, should be be one of the tools\n  Action Input: the input to the action\n  Observation: the result of the action\n  ... (this Thought/Action/Action Input/Observation can repeat N times)\n  Thought: I think I have enough information to answer the question. Based on the data retrieved, I can now answer the question.\n  Final Answer: the final answer to the original input question with data to support it\n  \n  Begin!\n  Question: {{input}}\n  Thought: I need to understand the semantics of the data structure available in the database.\"\n);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "903dca71-d6b9-44e9-8918-d7754b29a5e6",
+                    "metadata": {},
+                    "source": "## Model Creation\nNow, we can create the models that can leverage the tools that were created earlier."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "3ca4e299-0869-4cdd-af72-2c6107dce164",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE MODEL IF NOT EXISTS test( \n    input\n) ENGINE = OpenAI(api_key = 'sk-proj-xxxx', model_name = 'gpt-3.5-turbo')\nPROMPT cities_prompt\nTOOLS (langdb_raw_query);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "e5678d23-fd2f-4bfd-b161-f8fd9d6e0124",
+                    "metadata": {},
+                    "source": "Along with the tools we had created, we have also attached `langdb_raw_query`, a built-in static tool, which allows the model to execute raw SELECT (only) queries on the database."
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "30aef246-cfaf-43a8-ba0a-f3ed427162ea",
+                    "metadata": {},
+                    "source": "## Model Execution\nUsing the created model, we can execute queries which would require the LLM to use both structured (cities table) and unstructured (Wikipedia articles) data through the provided tools.\n"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 26,
+                    "id": "d250e355-a9e1-409d-8057-8197e1824a09",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>cities_info_model('Tell me about the arts and culture of the city with the highest population')</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>The city with the highest population is Tokyo. Tokyo has a vibrant arts and culture scene which includes various museums like the Tokyo National Museum specializing in traditional Japanese art. There are also international and ethnic schools in Tokyo that provide diverse educational programs. The architecture of Tokyo has been influenced by its history, with modern and contemporary styles dominating the urban landscape.\\n\\nHere are some specific details about Tokyo's arts and culture:\\n- Tokyo has many museums, with the Tokyo National Museum being the country's largest museum specializing in traditional Japanese art.\\n- There are international and ethnic schools in Tokyo that offer educational programs based on national or international curricula.\\n- The architecture in Tokyo has been shaped by its history, with modern and contemporary styles being prevalent due to past earthquakes and firebombing incidents.\\n\\nOverall, Tokyo offers a rich cultural experience with a mix of traditional and modern elements in its arts, education, and architecture.</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select cities_info_model('Tell me about the arts and culture of the city with the highest population');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "24230b36-c168-473b-aa85-ad13c46346d1",
+                    "metadata": {},
+                    "source": "In the above query, the model generates a SQL query to find the city with the most populous city and invokes the `langdb_raw_query` tool to execute the generated query. It uses the result from the query, i.e. Tokyo, and invokes the `cities_info_specific` tool to get more information about the arts and culture of the city."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 28,
+                    "id": "3f1320f6-3a2a-4781-bdf3-e783346d3069",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>cities_info_model('Which city conducted the 1964 Summer Olympics')</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>The city that conducted the 1964 Summer Olympics is Tokyo. The International Olympic Committee (IOC) selected Tokyo as the host of the 2020 Summer Olympic Games as well.</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select cities_info_model('Which city conducted the 1964 Summer Olympics');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "cedf84a4-d821-49cc-a071-c1fe24d540e2",
+                    "metadata": {},
+                    "source": "Unlike the previous query, the model invokes the `cities_info_generic` tool to find the required information directly."
+                }
+            ],
+            "metadata": {
+                "kernelspec": {
+                    "display_name": "langdb",
+                    "language": "sql",
+                    "name": "langdb"
+                },
+                "language_info": {
+                    "codemirror_mode": "sql",
+                    "file_extension": ".sql",
+                    "mimetype": "text/x-sql",
+                    "name": "sql"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 5
+        },
+        "last_modified": "2024-06-05T13:33:28+05:30",
+        "created_at": "2024-05-20T23:26:58+08:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data.ipynb",
+        "tags": [
+            "Agent"
+        ]
+    }
+]
