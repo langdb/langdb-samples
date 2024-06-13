@@ -51,7 +51,7 @@ order by p.id
 limit 10
 END EVERY 5 second;
 
-CREATE ENDPOINT investor_guide(query String "Answer User's Questions") AS
+CREATE AGENT investor_guide(query String "Answer User's Questions") AS
 WITH tbl AS (
   SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query
 ) 
