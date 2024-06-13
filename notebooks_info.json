@@ -314,12 +314,20 @@
                     "execution_count": 1,
                     "id": "ae892947-d9d5-45ac-8cc2-8c3c10cd55a6",
                     "metadata": {},
-                    "outputs": [],
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
                     "source": "CREATE TABLE pdfs (\n  id UUID DEFAULT generateUUIDv4(),\n  content `String`, \n  metadata `String`,\n   \n) \nengine = MergeTree\norder by (id, content);"
                 },
                 {
                     "cell_type": "code",
-                    "execution_count": 13,
+                    "execution_count": 2,
                     "id": "931bdb23-2a26-419b-9558-99d634c68279",
                     "metadata": {},
                     "outputs": [
@@ -335,13 +343,13 @@
                 },
                 {
                     "cell_type": "code",
-                    "execution_count": 14,
+                    "execution_count": 4,
                     "id": "98456461-0355-4415-961e-5fcebdb111ab",
                     "metadata": {},
                     "outputs": [
                         {
                             "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>count()</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>264</td>\n    </tr>\n  </tbody>\n</table>"
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>count()</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>323</td>\n    </tr>\n  </tbody>\n</table>"
                             },
                             "metadata": {},
                             "output_type": "display_data"
@@ -351,13 +359,13 @@
                 },
                 {
                     "cell_type": "code",
-                    "execution_count": 15,
+                    "execution_count": 5,
                     "id": "2f86729f-412d-450d-87a4-681570304212",
                     "metadata": {},
                     "outputs": [
                         {
                             "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>id</th>\n      <th>content</th>\n      <th>metadata</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>8d3381b5-db68-4bfd-8090-db82d63625f4</td>\n      <td>SIGNATURE\\r\\nPursuant to the requirements of the Securities Exchange Act of 1934, the Registrant has duly caused this report to be signed on its behalf by the\\r\\nundersigned hereunto duly authorized.\\r\\nDate: May 3, 2024 Apple Inc.\\r\\nBy: /s/ Katherine Adams\\r\\nKatherine Adams\\r\\nSenior Vice President,\\r\\nGeneral Counsel and Secretary</td>\n      <td>{\"source\":\"file:///var/lib/clickhouse/user_files/apple.pdf\",\"chunk_id\":0,\"page_no\":3}</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>afe5da32-246c-4844-80e3-0713b9afce6c</td>\n      <td>and/or maintain the Enhancements. The Board further acknowledges and agrees that (i) the Enhancements confer substantial benefits upon\\r\\nApple and its shareholders; and (ii) Apple’s commitment to adopt, implement, and/or maintain the Enhancements will serve Apple and its\\r\\nshareholders’ best interests and constitutes fair, reasonable and adequate consideration for the release of the Settled Plaintiffs’ Claims.\\r\\n- 6 -\\r\\nEX. B-1 - NOTICE OF PENDENCY AND PROPOSED SETTLEMENT OF SHAREHOLDER DERIVATIVE ACTIONS</td>\n      <td>{\"source\":\"file:///var/lib/clickhouse/user_files/apple.pdf\",\"chunk_id\":2,\"page_no\":70}</td>\n    </tr>\n  </tbody>\n</table>"
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>id</th>\n      <th>content</th>\n      <th>metadata</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>3698cae2-1126-408a-8002-003da4165d2f</td>\n      <td>Total comprehensive income $ 96,652 $ 88,531 $ 95,249\\r\\nSee accompanying Notes to Consolidated Financial Statements.\\r\\nApple Inc. | 2023 Form 10-K | 29</td>\n      <td>{\"chunk_id\":1,\"page_no\":31,\"source\":\"https://d18rn0p25nwr6d.cloudfront.net/CIK-0000320193/faab4555-c69b-438a-aaf7-e09305f87ca3.pdf\"}</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>7a773313-f03b-4446-800c-a7bbaafb45e0</td>\n      <td>completed second fiscal quarter, was approximately $2,591,165,000,000. Solely for purposes of this disclosure, shares of common stock held by executive officers and directors of\\r\\nthe Registrant as of such date have been excluded because such persons may be deemed to be affiliates. This determination of executive officers and directors as affiliates is not\\r\\nnecessarily a conclusive determination for any other purposes.\\r\\n15,552,752,000 shares of common stock were issued and outstanding as of October 20, 2023.\\r\\nDOCUMENTS INCORPORATED BY REFERENCE\\r\\nPortions of the Registrant’s definitive proxy statement relating to its 2024 annual meeting of shareholders are incorporated by reference into Part III of this Annual Report on Form\\r\\n10-K where indicated. The Registrant’s definitive proxy statement will be filed with the U.S. Securities and Exchange Commission within 120 days after the end of the fiscal year to\\r\\nwhich this report relates.</td>\n      <td>{\"source\":\"https://d18rn0p25nwr6d.cloudfront.net/CIK-0000320193/faab4555-c69b-438a-aaf7-e09305f87ca3.pdf\",\"page_no\":1,\"chunk_id\":2}</td>\n    </tr>\n  </tbody>\n</table>"
                             },
                             "metadata": {},
                             "output_type": "display_data"
@@ -373,18 +381,10 @@
                 },
                 {
                     "cell_type": "code",
-                    "execution_count": 16,
+                    "execution_count": 6,
                     "id": "b93bdacd-caa3-4e71-88ca-d1a6b336a89b",
                     "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
+                    "outputs": [],
                     "source": "CREATE TABLE pdf_embeddings (\n  id UUID,\n  embeddings `Array`(`Float32`)\n) \nengine = MergeTree\norder by id;"
                 },
                 {
@@ -429,7 +429,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE ENDPOINT similar(query String \"Query to search similar sections in pdf documents\") AS\nWITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  content, \n  cosineDistance(embeddings, query) AS similarity \nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  similarity DESC \n  LIMIT 5\n"
+                    "source": "CREATE ENDPOINT similar(query String \"Query to search similar sections in pdf documents\") AS\nWITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  content, \n  cosineDistance(embeddings, query) AS similarity \nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  similarity ASC \n  LIMIT 5\n"
                 },
                 {
                     "cell_type": "markdown",
@@ -530,7 +530,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-05T00:06:49+05:30",
+        "last_modified": "2024-06-13T12:53:28+05:30",
         "created_at": "2024-05-18T21:29:02+08:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/PDF%20extraction%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
