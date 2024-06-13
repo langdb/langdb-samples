@@ -32,10 +32,10 @@ limit 10
 END EVERY 5 second;
 
 
--- CREATE ENDPOINT to find similar documents based on embeddings
+-- CREATE AGENT to find similar documents based on embeddings
 
 
-CREATE ENDPOINT similar(query String "Query to search similar sections in pdf documents") AS
+CREATE AGENT similar(query String "Query to search similar sections in pdf documents") AS
 WITH tbl AS (
   SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query
 )
