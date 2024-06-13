@@ -7,7 +7,7 @@
                     "cell_type": "markdown",
                     "id": "7e549dc8-f6fb-4e4b-a65c-4b3b8898dddf",
                     "metadata": {},
-                    "source": "# Sentiment Analysis using LangDB and LLMs - Part 2\n\nThis is a  continuation to the post [here](https://langdb.ai/docs/getting_started/sentiment-1/). As discussed in the previous section, we will implement another approach in this example. \n\n**Approach**\n- Send batch of 10 rows at a time leveraging `pretty_print()` function.\n- Instruct LLM to lag out specific extreme reviews that deviate too much for a product in a response.\n- Create an `Endpoint` for accessing reviews based on id.\n"
+                    "source": "# Sentiment Analysis using LangDB and LLMs - Part 2\n\nThis is a  continuation to the post [here](https://langdb.ai/docs/getting_started/sentiment-1/). As discussed in the previous section, we will implement another approach in this example. \n\n**Approach**\n- Send batch of 10 rows at a time leveraging `pretty_print()` function.\n- Instruct LLM to lag out specific extreme reviews that deviate too much for a product in a response.\n- Create an `Agent` for accessing reviews based on id.\n"
                 },
                 {
                     "cell_type": "code",
@@ -229,7 +229,7 @@
                     "cell_type": "markdown",
                     "id": "d79154f7-9c5f-4a75-adcd-91e7c31ee703",
                     "metadata": {},
-                    "source": "Using the above query lets create an `endpoint` that returns avg sentiment based on a product id"
+                    "source": "Using the above query lets create an `agent` that returns avg sentiment based on a product id"
                 },
                 {
                     "cell_type": "code",
@@ -245,7 +245,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE ENDPOINT product_sentiment (product_id Int) AS \nSELECT cr.review_id as review_id, p.product_id as product_id, p.product_name as product_name, avg(sentiment) as avg_sentiment\nFROM customer_reviews as cr \nJOIN products as p on p.product_id = cr.product_id\nJOIN (\n    SELECT\n        JSONExtractInt(element, 'sentiment') AS sentiment,\n        JSONExtractBool(element, 'anomaly') AS anomaly,\n        JSONExtractInt(element, 'review_id') AS review_id\n    FROM\n    (\n        SELECT batch_id, arrayJoin(JSONExtractArrayRaw(response)) AS element\n        FROM calculated_review_jsons as crj \n    ) \n) crj on crj.review_id = cr.review_id\nWHERE p.product_id = $product_id\ngroup by cr.review_id, p.product_id, p.product_name"
+                    "source": "CREATE AGENT product_sentiment (product_id Int) AS \nSELECT cr.review_id as review_id, p.product_id as product_id, p.product_name as product_name, avg(sentiment) as avg_sentiment\nFROM customer_reviews as cr \nJOIN products as p on p.product_id = cr.product_id\nJOIN (\n    SELECT\n        JSONExtractInt(element, 'sentiment') AS sentiment,\n        JSONExtractBool(element, 'anomaly') AS anomaly,\n        JSONExtractInt(element, 'review_id') AS review_id\n    FROM\n    (\n        SELECT batch_id, arrayJoin(JSONExtractArrayRaw(response)) AS element\n        FROM calculated_review_jsons as crj \n    ) \n) crj on crj.review_id = cr.review_id\nWHERE p.product_id = $product_id\ngroup by cr.review_id, p.product_id, p.product_name"
                 },
                 {
                     "cell_type": "code",
@@ -286,7 +286,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-13T13:07:10+05:30",
+        "last_modified": "2024-06-13T13:52:15+05:30",
         "created_at": "2024-06-13T13:07:10+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Sentiment%20Analysis%20Part%202.ipynb",
         "tags": [
@@ -439,7 +439,7 @@
                     "cell_type": "markdown",
                     "id": "1c6e40e4-ceb4-4328-8c37-5d55fd2beea3",
                     "metadata": {},
-                    "source": "# RAG powered by LangDB\nLangDB aims to bridge the gap between data and AI world by running them alongside. You can create an entire LangDB experience just using SQL commands all the way from extraction to creating a chat agent. \n\nThis sample demonstrates the following:\n\n- Extract data from PDF using `load_pdf_text` command.\n- Create a RAG function that leverages vector search easily using `Endpoint`\n- Create a LangDB `model` that connects to `OpenAI` APIs."
+                    "source": "# RAG powered by LangDB\n\nLangDB aims to bridge the gap between data and AI world by running them alongside. You can create an entire LangDB experience just using SQL commands all the way from extraction to creating a chat agent. \n\nThis sample demonstrates the following:\n\n- Extract data from PDF using `load_pdf_text` command.\n- Create a RAG function that leverages vector search easily using `Agent`\n- Create a LangDB `model` that connects to `OpenAI` APIs."
                 },
                 {
                     "cell_type": "markdown",
@@ -551,7 +551,7 @@
                     "cell_type": "markdown",
                     "id": "6dd50716-bc7c-4f9b-bbc0-b210b5de6f66",
                     "metadata": {},
-                    "source": "### Vector Search\n\n`Endpoints` let you create acecss endpoints that can be used both for API consumption as well as RAG inputs for LLMs.\n                                                                                                           \nHere we are creating an endpoint named `similar()` to perform a vector search against similar chunks to feed into our LLM model."
+                    "source": "### Vector Search\n\n`Agents` let you create access endpoints that can be used both for API consumption as well as RAG inputs for LLMs.\n                                                                                                           \nHere we are creating an AGENT named `similar()` to perform a vector search against similar chunks to feed into our LLM model."
                 },
                 {
                     "cell_type": "code",
@@ -567,7 +567,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE ENDPOINT similar(query String \"Query to search similar sections in pdf documents\") AS\nWITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  content, \n  cosineDistance(embeddings, query) AS similarity \nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  similarity ASC \n  LIMIT 5\n"
+                    "source": "CREATE AGENT similar(query String \"Query to search similar sections in pdf documents\") AS\nWITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  content, \n  cosineDistance(embeddings, query) AS similarity \nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  similarity ASC \n  LIMIT 5\n"
                 },
                 {
                     "cell_type": "markdown",
@@ -611,7 +611,7 @@
                     "cell_type": "markdown",
                     "id": "c0988e35-e147-4bcb-89bb-fc4a3e935ff7",
                     "metadata": {},
-                    "source": "### Model and Prompt Creation\n\nYou can dynamically create models and prompts on the fly using `CREATE` commands that can leverage tools that you have created.\n\n- Here we are attaching `similar` function as a tool.\n- You could also nest queries simply using SQL to hard wire the function chaining. \n"
+                    "source": "### Model and Prompt Creation\n\nYou can dynamically create models and prompts on the fly using `CREATE` commands that can leverage tools that you have created.\n\n- Here we are attaching `similar` function as a tool.\n- You could also nest queries simply using SQL to hard-wire the function chaining. \n"
                 },
                 {
                     "cell_type": "code",
@@ -633,7 +633,7 @@
                     "cell_type": "markdown",
                     "id": "56cad602-18be-4f2d-b8cd-d6bf8e15414c",
                     "metadata": {},
-                    "source": "### Model executiion\n\nUsing the created model, we can perform `legal_assist()` query that leverages `similar()` tool and responds. \n\nThis can immediately be plugged into the frontends to also provide a chat interface."
+                    "source": "### Model execution\n\nUsing the created model, we can perform `legal_assist()` query that leverages `similar()` tool and responds. \n\nThis can immediately be plugged into the front-end to also provide a chat interface."
                 },
                 {
                     "cell_type": "code",
@@ -668,7 +668,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-13T12:53:28+05:30",
+        "last_modified": "2024-06-13T14:55:13+05:30",
         "created_at": "2024-05-18T21:29:02+08:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/PDF%20extraction%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
@@ -851,7 +851,7 @@
                     "cell_type": "markdown",
                     "id": "74614d40-3cfe-4d2c-ba2a-295e058a8bad",
                     "metadata": {},
-                    "source": "In the CRAG implementation, all documents are evaluated to filter out only the relevant ones. This process involves creating a prompt, model, and endpoint that return only the filtered documents."
+                    "source": "In the CRAG implementation, all documents are evaluated to filter out only the relevant ones. This process involves creating a prompt, model, and agent that return only the filtered documents."
                 },
                 {
                     "cell_type": "code",
@@ -875,7 +875,7 @@
                     "id": "f1898f5c-d35e-42e1-ab29-ceaa5a48a133",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE ENDPOINT get_correct_documents(question String) AS \n (with tbl as (\n    select id, content, retrieval_evaluator($question, content) answer from pdf_contents\n)\nselect id, answer, content\nfrom tbl where positionCaseInsensitive(answer, 'yes') > 0)\nCOMMENT 'Endpoint to get the relevant document to the question';"
+                    "source": "CREATE AGENT get_correct_documents(question String) AS \n (with tbl as (\n    select id, content, retrieval_evaluator($question, content) answer from pdf_contents\n)\nselect id, answer, content\nfrom tbl where positionCaseInsensitive(answer, 'yes') > 0)\nCOMMENT 'AGENT to get the relevant document to the question';"
                 },
                 {
                     "cell_type": "markdown",
@@ -913,7 +913,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE ENDPOINT evaluator(question String, answer String, score String) AS\nSELECT evaluator($question, $answer, $score);"
+                    "source": "CREATE AGENT evaluator(question String, answer String, score String) AS\nSELECT evaluator($question, $answer, $score);"
                 },
                 {
                     "cell_type": "code",
@@ -929,7 +929,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE ENDPOINT endpoint_fallback_data(question String \"Query to search question\") AS\n(WITH tbl AS (\n  SELECT CAST(embed($question) AS `Array`(`Float32`)) AS question_embed\n)\nSELECT cosineDistance(embeddings, question_embed) AS similarity, p.id, p.possible_answers\nFROM embeddings_fallback_data AS pe\nJOIN popqa AS p ON p.id = pe.id\nCROSS JOIN tbl\nORDER BY similarity \nLIMIT 10)\nCOMMENT 'Returns top 10 results for the given query with similarity, id, and possible_answers';"
+                    "source": "CREATE AGENT agent_fallback_data(question String \"Query to search question\") AS\n(WITH tbl AS (\n  SELECT CAST(embed($question) AS `Array`(`Float32`)) AS question_embed\n)\nSELECT cosineDistance(embeddings, question_embed) AS similarity, p.id, p.possible_answers\nFROM embeddings_fallback_data AS pe\nJOIN popqa AS p ON p.id = pe.id\nCROSS JOIN tbl\nORDER BY similarity \nLIMIT 10)\nCOMMENT 'Returns top 10 results for the given query with similarity, id, and possible_answers';"
                 },
                 {
                     "cell_type": "code",
@@ -945,7 +945,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE ENDPOINT retrieval_evaluator(question String, document String) AS\n(SELECT retrieval_evaluator($question, $document))\nCOMMENT 'Endpoint for evaluating the relevancy of an question and document';"
+                    "source": "CREATE AGENT retrieval_evaluator(question String, document String) AS\n(SELECT retrieval_evaluator($question, $document))\nCOMMENT 'Agent for evaluating the relevancy of an question and document';"
                 },
                 {
                     "cell_type": "code",
@@ -961,7 +961,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL IF NOT EXISTS fallback_model (\n  input\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT (system \"Given a question, find the document relevant to the question and return possible answers and similarity scores. \nQuestion: {{input}}\")\nTOOLS (endpoint_fallback_data)\nSETTINGS retries = 1;"
+                    "source": "CREATE MODEL IF NOT EXISTS fallback_model (\n  input\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT (system \"Given a question, find the document relevant to the question and return possible answers and similarity scores. \nQuestion: {{input}}\")\nTOOLS (agent_fallback_data)\nSETTINGS retries = 1;"
                 },
                 {
                     "cell_type": "code",
@@ -977,7 +977,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE ENDPOINT fallback_model(question String) AS\n(SELECT fallback_model($question))\nCOMMENT 'Endpoint for searching fallback data source';"
+                    "source": "CREATE AGENT fallback_model(question String) AS\n(SELECT fallback_model($question))\nCOMMENT 'Agent for searching fallback data source';"
                 },
                 {
                     "cell_type": "markdown",
@@ -1034,7 +1034,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-13T12:06:15+05:30",
+        "last_modified": "2024-06-13T13:52:15+05:30",
         "created_at": "2024-05-20T14:19:26+03:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/CRAG.ipynb",
         "tags": [
@@ -1207,7 +1207,7 @@
                     "cell_type": "markdown",
                     "id": "7ee88a0c-96ca-4177-bcc9-b11176e3224f",
                     "metadata": {},
-                    "source": "## Endpoint Creation\nFirst, we create two endpoints which utilize vector search to find relevant chunks. While the first the endpoint can be utilized to find information when the city is not known, the second endpoint can be used to query about a specific city."
+                    "source": "## AGENT Creation\nFirst, we create two agents which utilize vector search to find relevant chunks. While the first the agents can be utilized to find information when the city is not known, the second agents can be used to query about a specific city."
                 },
                 {
                     "cell_type": "code",
@@ -1223,7 +1223,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE ENDPOINT cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'get information about cities';"
+                    "source": "CREATE AGENT cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'get information about cities';"
                 },
                 {
                     "cell_type": "code",
@@ -1239,7 +1239,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE ENDPOINT cities_info_specific(\n  city_name String \"name of the city\", \n  query String \"a description of the information to look up about the city specified in the city_name parameter\"\n) AS\n(WITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nWHERE city = $city_name\nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'Get information about a specific city';"
+                    "source": "CREATE AGENT cities_info_specific(\n  city_name String \"name of the city\", \n  query String \"a description of the information to look up about the city specified in the city_name parameter\"\n) AS\n(WITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nWHERE city = $city_name\nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'Get information about a specific city';"
                 },
                 {
                     "cell_type": "markdown",
@@ -1261,7 +1261,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE ENDPOINT get_semantics() AS \n(SELECT * FROM semantics())\nCOMMENT 'Schemas of all the tables';"
+                    "source": "CREATE AGENT get_semantics() AS \n(SELECT * FROM semantics())\nCOMMENT 'Schemas of all the tables';"
                 },
                 {
                     "cell_type": "markdown",
@@ -1380,7 +1380,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-13T13:07:10+05:30",
+        "last_modified": "2024-06-13T15:00:26+05:30",
         "created_at": "2024-05-20T23:26:58+08:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data.ipynb",
         "tags": [
@@ -1394,7 +1394,7 @@
                 {
                     "cell_type": "markdown",
                     "metadata": {},
-                    "source": "# RAG powered by LangDB\nLangDB aims to bridge the gap between data and AI world by running them alongside. You can create an entire LangDB experience just using SQL commands all the way from extraction to creating a chat agent. \n\nThis sample demonstrates the following:\n\n- Extract data from PDF using `load_pdf_text` command.\n- Create a RAG function that leverages vector search easily using `Endpoint`\n- Create a LangDB `model` that connects to `OpenAI` APIs.\n- Chat with a LangDB model in natural language using `CHAT` command."
+                    "source": "# RAG powered by LangDB\n\nLangDB aims to bridge the gap between data and AI world by running them alongside. You can create an entire LangDB experience just using SQL commands all the way from extraction to creating a chat agent. \n\nThis sample demonstrates the following:\n\n- Extract data from PDF using `load_pdf_text` command.\n- Create a RAG function that leverages vector search easily using `Agent`\n- Create a LangDB `model` that connects to `OpenAI` APIs.\n- Chat with a LangDB model in natural language using `CHAT` command."
                 },
                 {
                     "cell_type": "markdown",
@@ -1404,11 +1404,7 @@
                 {
                     "cell_type": "code",
                     "execution_count": 1,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [
                         {
                             "data": {
@@ -1423,11 +1419,7 @@
                 {
                     "cell_type": "code",
                     "execution_count": 2,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [
                         {
                             "data": {
@@ -1442,11 +1434,7 @@
                 {
                     "cell_type": "code",
                     "execution_count": 4,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [
                         {
                             "data": {
@@ -1461,11 +1449,7 @@
                 {
                     "cell_type": "code",
                     "execution_count": 5,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [
                         {
                             "data": {
@@ -1485,11 +1469,7 @@
                 {
                     "cell_type": "code",
                     "execution_count": 6,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [
                         {
                             "data": {
@@ -1509,11 +1489,7 @@
                 {
                     "cell_type": "code",
                     "execution_count": 7,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [
                         {
                             "data": {
@@ -1528,11 +1504,7 @@
                 {
                     "cell_type": "code",
                     "execution_count": 8,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [
                         {
                             "data": {
@@ -1547,16 +1519,12 @@
                 {
                     "cell_type": "markdown",
                     "metadata": {},
-                    "source": "### Vector Search\n\n`Endpoints` let you create access endpoints that can be used both for API consumption as well as RAG inputs for LLMs.\n\nEndpoints can be used to perform chaining of different models, or tools (which execute raw queries) to create a pipeline capable of handling complex tasks.\n                                                                                                    \nHere we are creating an endpoint named `similar()` to perform a vector search against similar chunks to feed into our LLM model."
+                    "source": "### Vector Search\n\n`Agents` let you create access endpoints that can be used both for API consumption as well as RAG inputs for LLMs.\n\nAgents can be used to perform chaining of different models, or tools (which execute raw queries) to create a pipeline capable of handling complex tasks.\n                                                                                                    \nHere we are creating an agent named `similar()` to perform a vector search against similar chunks to feed into our LLM model."
                 },
                 {
                     "cell_type": "code",
                     "execution_count": 9,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [
                         {
                             "data": {
@@ -1566,7 +1534,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE ENDPOINT similar(query String \"Query to search similar sections in pdf documents\") AS\nWITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  content, \n  cosineDistance(embeddings, query) AS similarity \nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdf_chunks AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  similarity DESC \n  LIMIT 5\n"
+                    "source": "CREATE AGENT similar(query String \"Query to search similar sections in pdf documents\") AS\nWITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  content, \n  cosineDistance(embeddings, query) AS similarity \nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdf_chunks AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  similarity DESC \n  LIMIT 5\n"
                 },
                 {
                     "cell_type": "markdown",
@@ -1576,11 +1544,7 @@
                 {
                     "cell_type": "code",
                     "execution_count": 10,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [
                         {
                             "data": {
@@ -1595,11 +1559,7 @@
                 {
                     "cell_type": "code",
                     "execution_count": 11,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [
                         {
                             "data": {
@@ -1619,11 +1579,7 @@
                 {
                     "cell_type": "code",
                     "execution_count": 12,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [
                         {
                             "data": {
@@ -1643,11 +1599,7 @@
                 {
                     "cell_type": "code",
                     "execution_count": 13,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [
                         {
                             "data": {
@@ -1662,16 +1614,12 @@
                 {
                     "cell_type": "markdown",
                     "metadata": {},
-                    "source": "### Creating an Endpoint to run the Chat Agent\n\nWe can create an endpoint which invokes our required model. We can Chat with the model using this endpoint."
+                    "source": "### Creating an AGENT to run the Chat Agent\n\nWe can create an AGENT which invokes our required model. We can Chat with the model using this agent."
                 },
                 {
                     "cell_type": "code",
                     "execution_count": 14,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [
                         {
                             "data": {
@@ -1681,7 +1629,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE ENDPOINT `chat_agent` (input String) AS\nSELECT legal_assist($input);"
+                    "source": "CREATE AGENT `chat_agent` (input String) AS\nSELECT legal_assist($input);"
                 },
                 {
                     "cell_type": "markdown",
@@ -1691,11 +1639,7 @@
                 {
                     "cell_type": "code",
                     "execution_count": 16,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [],
                     "source": "CHAT chat_agent WITH input = 'Hi';"
                 },
@@ -1707,55 +1651,35 @@
                 {
                     "cell_type": "code",
                     "execution_count": null,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [],
                     "source": "DROP TABLE pdf_chunks;"
                 },
                 {
                     "cell_type": "code",
                     "execution_count": null,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [],
                     "source": "DROP TABLE pdf_embeddings;"
                 },
                 {
                     "cell_type": "code",
                     "execution_count": null,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [],
                     "source": "TRUNCATE TABLE langdb.models;"
                 },
                 {
                     "cell_type": "code",
                     "execution_count": null,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [],
-                    "source": "TRUNCATE TABLE langdb.endpoints;"
+                    "source": "TRUNCATE TABLE langdb.agents;"
                 },
                 {
                     "cell_type": "code",
                     "execution_count": null,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
+                    "metadata": {},
                     "outputs": [],
                     "source": "TRUNCATE TABLE langdb.prompts;"
                 }
@@ -1767,15 +1691,16 @@
                     "name": "langdb"
                 },
                 "language_info": {
-                    "file_extension": ".py",
-                    "mimetype": "text/x-python",
-                    "name": "python"
+                    "codemirror_mode": "sql",
+                    "file_extension": ".sql",
+                    "mimetype": "text/x-sql",
+                    "name": "sql"
                 }
             },
             "nbformat": 4,
-            "nbformat_minor": 2
+            "nbformat_minor": 4
         },
-        "last_modified": "2024-06-12T13:19:51+05:30",
+        "last_modified": "2024-06-13T14:55:13+05:30",
         "created_at": "2024-06-12T12:14:06+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
@@ -1958,7 +1883,7 @@
                     "cell_type": "markdown",
                     "id": "6c9cef3b-049b-4779-a31e-bed874dafc9e",
                     "metadata": {},
-                    "source": "## Why is this a big deal ?\n\nWell you might be thinking sentiment analysis has been around for ages and LLMs can be extremely slow for the purpose. So let's make this an interesting example. So far even though it worked great, we are only passing one row at a time which will translate into many number of API calls and too much slowness.\n\n**New Approach**\n- Send batch of 10 rows at a time leveraging `pretty_print()` function.\n- Store intermediate results and create an `Endpoint` for accessing averages so LLM can have a history of deviations\n- Instruct LLM to lag out specific extreme reviews that deviate too much for a product in a response.\n- Meanwhile also calculate the review.\n- Lets also generate reasonable sized data to get some interesting insights.\n\nModels will keep getting better in the AI world and LangDB gives you a way to dynamically combine RAG and models in a easy way to create many exciting applications.\n\nAs this post has become already too long, lets continue this in a separate post (Part 2). \n\n"
+                    "source": "## Why is this a big deal ?\n\nWell you might be thinking sentiment analysis has been around for ages and LLMs can be extremely slow for the purpose. So let's make this an interesting example. So far even though it worked great, we are only passing one row at a time which will translate into many number of API calls and too much slowness.\n\n**New Approach**\n- Send batch of 10 rows at a time leveraging `pretty_print()` function.\n- Store intermediate results and create an `Agent` for accessing averages so LLM can have a history of deviations\n- Instruct LLM to lag out specific extreme reviews that deviate too much for a product in a response.\n- Meanwhile also calculate the review.\n- Lets also generate reasonable sized data to get some interesting insights.\n\nModels will keep getting better in the AI world and LangDB gives you a way to dynamically combine RAG and models in a easy way to create many exciting applications.\n\nAs this post has become already too long, lets continue this in a separate post (Part 2). \n\n"
                 },
                 {
                     "cell_type": "code",
@@ -1985,7 +1910,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-13T13:07:10+05:30",
+        "last_modified": "2024-06-13T13:52:15+05:30",
         "created_at": "2024-06-13T13:07:10+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Sentiment%20Analysis%20Part%201.ipynb",
         "tags": [
