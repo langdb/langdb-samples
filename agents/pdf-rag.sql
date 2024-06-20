@@ -14,6 +14,11 @@ SELECT content, metadata from
 load_pdf_ ('file:///var/lib/clickhouse/user_files/apple.pdf');
 
 
+CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(
+input COMMENT 'This is the input of the content whose embeddings are created'
+) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo', temperature = 0.3, embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100);
+
+
 CREATE TABLE pdf_embeddings (
   id UUID,
   embeddings `Array`(`Float32`)
@@ -25,7 +30,7 @@ order by id;
 SPAWN TASK generate_embeddings
     BEGIN
 INSERT INTO pdf_embeddings
-select p.id, embed(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id
+select p.id, custom_embed(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id
 where p.id != pe.id
 order by p.id
 limit 10
@@ -37,7 +42,7 @@ END EVERY 5 second;
 
 CREATE AGENT similar(query String "Query to search similar sections in pdf documents") AS
 WITH tbl AS (
-  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query
+  SELECT CAST(custom_embed($query) AS `Array`(`Float32`)) AS query
 )
 SELECT 
   p.id as id, 
