@@ -4,7 +4,7 @@ import nbformat
 import subprocess
 
 GITHUB_REPO_URL = "https://raw.githubusercontent.com/langdb/langdb-samples/main"
-TAGS = ["Agent", "Pdfs", "RAG"]
+TAGS = ["Agent", "Pdf", "RAG"]
 def get_tags_from_title(title):
     tags = []
     for tag in TAGS:
