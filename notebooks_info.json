@@ -229,19 +229,25 @@
                 },
                 {
                     "cell_type": "code",
-                    "execution_count": 28,
-                    "id": "3aa99f12-9aaf-4ce5-88b3-35380df34592",
+                    "execution_count": null,
+                    "id": "c0877078-ed54-43d2-9daa-0c720ddab3ed",
                     "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
+                    "outputs": [],
                     "source": "CREATE PROMPT cities_prompt (\n  system \"You are a master data agent. Your task is to provide useful information to the user about a city based on the question.\n\n  Only use information retrieved using the supplied tools.\n  \n  For doing this, first, fetch the schema of the tables in the database using the get_semantics tool. Understand the schema of the cities table thoroughly to understand the kind of information you can look up using a SQL query on the provided database. If required, generate a valid Clickhouse SQL query to get any required information from the cities table and use the langdb_raw_query to execute that query and get the result.\n\n  You can retrieve information regarding cities using either cities_info_specific and/or cities_info_generic tool. Both the tools use similarity search based on cosine distance to return the most relevant information snippets related to the query.\n  1. When you can cities_info_specific tool: If the required city is known or was looked up using a SQL query, use this tool to retrieve information about that specific city.\n\n  2. When you can cities_info_generic tool:\n  Use this tool to look up the information when the city is not known and you are not able to use a SQL query to find the required city.\n  \n  Use the following format:\n  Question: the input question you must answer\n  Thought: you should always think about what to do\n  Action: the action to take, should be be one of the tools\n  Action Input: the input to the action\n  Observation: the result of the action\n  ... (this Thought/Action/Action Input/Observation can repeat N times)\n  Thought: I think I have enough information to answer the question. Based on the data retrieved, I can now answer the question.\n  Final Answer: the final answer to the original input question with data to support it\n  \n  Begin!\n  Question: {{input}}\n  Thought: I need to understand the semantics of the data structure available in the database.\"\n);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "e6832054-e6a9-4ff7-bd39-64ec8a3edc69",
+                    "metadata": {},
+                    "source": "## Provider Creation\nBefore Creating our model, we will create a provider, which will store our engine and make it reusable"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "61e3cf80-9d0c-4ba6-a9d2-54de6948886b",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3-turbo'\n);"
                 },
                 {
                     "cell_type": "markdown",
@@ -263,7 +269,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT cities_prompt\nTOOLS (langdb_raw_query);"
+                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) USING open_ai_provider()\nPROMPT cities_prompt\nTOOLS (langdb_raw_query);"
                 },
                 {
                     "cell_type": "markdown",
@@ -338,7 +344,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-13T15:00:26+05:30",
+        "last_modified": "2024-06-20T08:48:57+05:30",
         "created_at": "2024-05-20T23:26:58+08:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data.ipynb",
         "tags": [
@@ -667,6 +673,14 @@
                 },
                 {
                     "cell_type": "code",
+                    "execution_count": null,
+                    "id": "a806ce1b-d6c1-4c1f-95a6-454d733c8eca",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3-turbo'\n);"
+                },
+                {
+                    "cell_type": "code",
                     "execution_count": 49,
                     "id": "096e95ed-4a8c-4e04-8923-8ab69dbe6e08",
                     "metadata": {},
@@ -679,7 +693,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "\nCREATE MODEL legal_assist(\n  input\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT (system \"Use the tool 'similar' to query for similar documents based on user query to assist with quickly searching legal documents.\",\n  human \"{{input}}\")\nTOOLS (similar)\nSETTINGS retries = 1;"
+                    "source": "CREATE MODEL legal_assist(\n  input\n) USING open_ai_provider()\nPROMPT (system \"Use the tool 'similar' to query for similar documents based on user query to assist with quickly searching legal documents.\",\n  human \"{{input}}\")\nTOOLS (similar)\nSETTINGS retries = 1;"
                 },
                 {
                     "cell_type": "markdown",
@@ -720,7 +734,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-13T14:55:13+05:30",
+        "last_modified": "2024-06-20T08:48:57+05:30",
         "created_at": "2024-05-18T21:29:02+08:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/PDF%20extraction%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
@@ -896,6 +910,20 @@
                 },
                 {
                     "cell_type": "markdown",
+                    "id": "769e065c-9cf4-4e78-814c-782e01d5ad09",
+                    "metadata": {},
+                    "source": "## Provider Creation\nBefore Creating our model, we will create a provider, which will store our engine and make it reusable"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "d86bc75c-a9c5-4eaf-b21a-694ad67b798b",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3-turbo'\n);"
+                },
+                {
+                    "cell_type": "markdown",
                     "id": "9111fd4f-d40f-417d-925b-79bd43e8dd1c",
                     "metadata": {},
                     "source": "#### Retrieval evaluator "
@@ -920,7 +948,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL retrieval_evaluator (\n    question,\n    document\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT ( system \"\nGiven a question, does the following document have exact\ninformation to answer the question?\nQuestion: {{question}}\nDocument: {{document}}\nThink Step by step, and answer with yes or no only\");"
+                    "source": "CREATE MODEL retrieval_evaluator (\n    question,\n    document\n) USING open_ai_provider()\nPROMPT ( system \"\nGiven a question, does the following document have exact\ninformation to answer the question?\nQuestion: {{question}}\nDocument: {{document}}\nThink Step by step, and answer with yes or no only\");"
                 },
                 {
                     "cell_type": "code",
@@ -950,7 +978,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL evaluator(\n    question,\n    answer,\n    score\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT (system \"Given a question and possible answer respond if it is relevant or not. \nAnswer 'yes' if the score is below 0.1. If score is not provided, return 'no'.\nPlease use 'yes' or 'no' as the answer. \nquestion: {{question}}\npossible answer: {{answer}}\nsimilarity score: {{score}}\");"
+                    "source": "CREATE MODEL evaluator(\n    question,\n    answer,\n    score\n) USING open_ai_provider()\nPROMPT (system \"Given a question and possible answer respond if it is relevant or not. \nAnswer 'yes' if the score is below 0.1. If score is not provided, return 'no'.\nPlease use 'yes' or 'no' as the answer. \nquestion: {{question}}\npossible answer: {{answer}}\nsimilarity score: {{score}}\");"
                 },
                 {
                     "cell_type": "code",
@@ -1014,7 +1042,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL IF NOT EXISTS fallback_model (\n  input\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT (system \"Given a question, find the document relevant to the question and return possible answers and similarity scores. \nQuestion: {{input}}\")\nTOOLS (agent_fallback_data)\nSETTINGS retries = 1;"
+                    "source": "CREATE MODEL IF NOT EXISTS fallback_model (\n  input\n) USING open_ai_provider()\nPROMPT (system \"Given a question, find the document relevant to the question and return possible answers and similarity scores. \nQuestion: {{input}}\")\nTOOLS (agent_fallback_data)\nSETTINGS retries = 1;"
                 },
                 {
                     "cell_type": "code",
@@ -1052,7 +1080,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL main(\n    question\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT (system \"Given a question, try to find a relevant answer based on relavent documents. \nRelevant documents can be fetched with get_correct_documents tool.\nIf you cannot get any document, try to use the fallback data source.\nFallback data source can only be used if the main data source doesn't provide a relevant answer.\nYou must verify the answer with the evaluator. If the evaluator returns 'no', do not provide an answer to the user.\nquestion: {{question}}\")\nTOOLS (get_correct_documents, fallback_model, evaluator)\nSETTINGS retries = 1;"
+                    "source": "CREATE MODEL main(\n    question\n) USING open_ai_provider()\nPROMPT (system \"Given a question, try to find a relevant answer based on relavent documents. \nRelevant documents can be fetched with get_correct_documents tool.\nIf you cannot get any document, try to use the fallback data source.\nFallback data source can only be used if the main data source doesn't provide a relevant answer.\nYou must verify the answer with the evaluator. If the evaluator returns 'no', do not provide an answer to the user.\nquestion: {{question}}\")\nTOOLS (get_correct_documents, fallback_model, evaluator)\nSETTINGS retries = 1;"
                 },
                 {
                     "cell_type": "code",
@@ -1087,7 +1115,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-13T13:52:15+05:30",
+        "last_modified": "2024-06-20T08:48:57+05:30",
         "created_at": "2024-05-20T14:19:26+03:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/CRAG.ipynb",
         "tags": [
@@ -1214,6 +1242,14 @@
                 },
                 {
                     "cell_type": "code",
+                    "execution_count": null,
+                    "id": "1f4f88c2-c86f-412f-b870-866479580a20",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3-turbo'\n);"
+                },
+                {
+                    "cell_type": "code",
                     "execution_count": 34,
                     "id": "aa1f3fdf-cf17-4906-836d-1ba5cc5d919c",
                     "metadata": {},
@@ -1226,7 +1262,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL review_detailed(\n    reviews\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT customer_review_pt_detailed;"
+                    "source": "CREATE MODEL review_detailed(\n    reviews\n) USING open_ai_provider\nPROMPT customer_review_pt_detailed;"
                 },
                 {
                     "cell_type": "code",
@@ -1381,7 +1417,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-13T13:52:15+05:30",
+        "last_modified": "2024-06-20T08:48:57+05:30",
         "created_at": "2024-06-13T13:07:10+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Sentiment%20Analysis%20Part%202.ipynb",
         "tags": [
@@ -1508,6 +1544,14 @@
                 },
                 {
                     "cell_type": "code",
+                    "execution_count": null,
+                    "id": "4f750345-736a-4156-bebb-c956ff1c1417",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3-turbo'\n);"
+                },
+                {
+                    "cell_type": "code",
                     "execution_count": 17,
                     "id": "6859d0f7-1725-4b96-ab86-5cb65253ab0c",
                     "metadata": {},
@@ -1520,7 +1564,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL review(\n    review\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT customer_review_pt;"
+                    "source": "CREATE MODEL review(\n    review\n) USING open_ai_provider()\nPROMPT customer_review_pt;"
                 },
                 {
                     "cell_type": "markdown",
@@ -1591,7 +1635,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-13T13:52:15+05:30",
+        "last_modified": "2024-06-20T08:48:57+05:30",
         "created_at": "2024-06-13T13:07:10+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Sentiment%20Analysis%20Part%201.ipynb",
         "tags": [
@@ -1788,6 +1832,18 @@
                     "source": "### Model and Prompt Creation\n\nYou can dynamically create models and prompts on the fly using `CREATE` commands that can leverage tools that you have created.\n\n- Here we are attaching `similar` function as a tool.\n- You could also nest queries simply using SQL to hard wire the function chaining.\n- Prompts can be passed inline or can be created seperately. \n"
                 },
                 {
+                    "cell_type": "markdown",
+                    "metadata": {},
+                    "source": "### Provider Creation"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3-turbo'\n);"
+                },
+                {
                     "cell_type": "code",
                     "execution_count": 12,
                     "metadata": {},
@@ -1800,7 +1856,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "\nCREATE MODEL IF NOT EXISTS legal_assist(\n  input\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo')\nPROMPT (system \"Use the tool 'similar' to query for similar documents based on user query to assist with quickly searching legal documents.\",\n  human \"{{input}}\")\nTOOLS (similar)\nSETTINGS retries = 1;"
+                    "source": "CREATE MODEL IF NOT EXISTS legal_assist(\n  input\n) USING open_ai_provider()\nPROMPT (system \"Use the tool 'similar' to query for similar documents based on user query to assist with quickly searching legal documents.\",\n  human \"{{input}}\")\nTOOLS (similar)\nSETTINGS retries = 1;"
                 },
                 {
                     "cell_type": "markdown",
@@ -1911,7 +1967,7 @@
             "nbformat": 4,
             "nbformat_minor": 4
         },
-        "last_modified": "2024-06-13T14:55:13+05:30",
+        "last_modified": "2024-06-20T08:48:57+05:30",
         "created_at": "2024-06-12T12:14:06+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
