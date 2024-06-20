@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - chore/-tags-added-in-notebook-json
 
 jobs:
   process_notebooks:
