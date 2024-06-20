@@ -480,7 +480,7 @@
         "created_at": "2024-06-13T13:07:10+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Structured%20Layout%20Extraction%20from%20PDFs%20and%20Images.ipynb",
         "tags": [
-            "Pdfs"
+            "Pdf"
         ]
     },
     {
@@ -724,6 +724,7 @@
         "created_at": "2024-05-18T21:29:02+08:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/PDF%20extraction%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
+            "Pdf",
             "RAG"
         ]
     },
@@ -1914,6 +1915,7 @@
         "created_at": "2024-06-12T12:14:06+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
+            "Pdf",
             "RAG"
         ]
     }
