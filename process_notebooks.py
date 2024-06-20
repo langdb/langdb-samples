@@ -4,6 +4,16 @@ import nbformat
 import subprocess
 
 GITHUB_REPO_URL = "https://raw.githubusercontent.com/langdb/langdb-samples/main"
+TAGS = ["Agent", "Pdfs", "RAG"]
+def get_tags_from_title(title):
+    tags = []
+    for tag in TAGS:
+        if tag.lower() in title.lower():
+            tags.append(tag)
+    # if tags is empty, default is ["Agent"]
+    if not tags:
+        tags.append("Agent")
+    return tags
 
 def get_git_commit_time(filepath, time_type="last"):
     try:
@@ -37,14 +47,13 @@ def get_notebook_info(filepath):
     created_at = get_git_commit_time(filepath, "first")
     relative_path = os.path.relpath(filepath)
     file_download_url = f"{GITHUB_REPO_URL}/{relative_path.replace(' ', '%20')}"
-    
     return {
         "title": title,
         "content": nb,
         "last_modified": last_modified,
         "created_at": created_at,
         "file_download_url": file_download_url,
-        "tags": ["Agent"]
+        "tags": get_tags_from_title(title)
     }
 
 def main():
