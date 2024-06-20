@@ -121,7 +121,15 @@
                     "cell_type": "markdown",
                     "id": "c66fe141-8a03-4231-ba8f-cde076b3980f",
                     "metadata": {},
-                    "source": "## Embeddings\nLangDB offers a convenient method to generate embeddings using the built-in `embed()` function for development and testing purposes. Additionally, we can integrate with OpenAI or other providers to generate embeddings."
+                    "source": "## Embeddings\nLangDB offers a convenient method to generate embeddings using the custom embedding type model function for development and testing purposes. Additionally, we can use in-built `embed()` function to generate embeddings."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "81f1023b",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo', temperature = 0.3, embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100);\n"
                 },
                 {
                     "cell_type": "code",
@@ -143,7 +151,7 @@
                     "cell_type": "markdown",
                     "id": "6c47e390-05cd-4dc8-9379-f14686f60d38",
                     "metadata": {},
-                    "source": "While we can use `embed()` to generate embeddings for each chunk and store them, we can also run the whole process in background using `SPAWN TASK` which essentially creates a cron job."
+                    "source": "While we can use `custom_embed()` to generate embeddings for each chunk and store them, we can also run the whole process in background using `SPAWN TASK` which essentially creates a cron job."
                 },
                 {
                     "cell_type": "code",
@@ -159,7 +167,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "SPAWN TASK generate_embeddings\nBEGIN\n    INSERT INTO pdf_embeddings\n    select p.id, embed(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 5 second\nWITH MAX_POOL_SIZE 5;"
+                    "source": "SPAWN TASK generate_embeddings\nBEGIN\n    INSERT INTO pdf_embeddings\n    select p.id, custom_embed(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 5 second\nWITH MAX_POOL_SIZE 5;"
                 },
                 {
                     "cell_type": "markdown",
@@ -181,7 +189,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'get information about cities';"
+                    "source": "CREATE AGENT cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(custom_embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'get information about cities';"
                 },
                 {
                     "cell_type": "code",
@@ -197,7 +205,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT cities_info_specific(\n  city_name String \"name of the city\", \n  query String \"a description of the information to look up about the city specified in the city_name parameter\"\n) AS\n(WITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nWHERE city = $city_name\nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'Get information about a specific city';"
+                    "source": "CREATE AGENT cities_info_specific(\n  city_name String \"name of the city\", \n  query String \"a description of the information to look up about the city specified in the city_name parameter\"\n) AS\n(WITH tbl AS (\n  SELECT CAST(custom_embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nWHERE city = $city_name\nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'Get information about a specific city';"
                 },
                 {
                     "cell_type": "markdown",
@@ -344,7 +352,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-20T08:48:57+05:30",
+        "last_modified": "2024-06-20T18:22:46+05:30",
         "created_at": "2024-05-20T23:26:58+08:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data.ipynb",
         "tags": [
@@ -573,7 +581,15 @@
                     "cell_type": "markdown",
                     "id": "21d4570e-6cd0-4b47-8b36-29c62911c1fe",
                     "metadata": {},
-                    "source": "### Embeddings\nLangdb supports convenient way to generate embeddings on the fly. You can use the built-in `embed()` function for development and testing. \n\nYou can also use `OpenAI` or other providers."
+                    "source": "### Embeddings\nLangDB offers a convenient method to generate embeddings using the custom embedding type model function for development and testing purposes. Additionally, we can use in-built `embed()` function to generate embeddings."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "291d47d7",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) ENGINE = OpenAI(api_key ='sk-proj-xxx', model_name = 'gpt-3.5-turbo', temperature = 0.3, embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100);\n"
                 },
                 {
                     "cell_type": "code",
@@ -587,7 +603,7 @@
                     "cell_type": "markdown",
                     "id": "e7d9d198-adc5-4a2c-a1b2-feed15009a03",
                     "metadata": {},
-                    "source": "Use `embed()` function to generate embeddings for each chunk and store them into `pdf_embeddings` table.\n\nYou can also use `SPAWN TASK` feature to run this in the background. "
+                    "source": "Use `custom_embed` model to generate embeddings for each chunk and store them into `pdf_embeddings` table.\n\nYou can also use `SPAWN TASK` feature to run this in the background. "
                 },
                 {
                     "cell_type": "code",
@@ -603,7 +619,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "INSERT INTO pdf_embeddings\nselect p.id, embed(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id\nwhere p.id != pe.id\norder by p.id;"
+                    "source": "INSERT INTO pdf_embeddings\nselect p.id, custom_embed(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id\nwhere p.id != pe.id\norder by p.id;"
                 },
                 {
                     "cell_type": "markdown",
@@ -625,7 +641,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT similar(query String \"Query to search similar sections in pdf documents\") AS\nWITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  content, \n  cosineDistance(embeddings, query) AS similarity \nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  similarity ASC \n  LIMIT 5\n"
+                    "source": "CREATE AGENT similar(query String \"Query to search similar sections in pdf documents\") AS\nWITH tbl AS (\n  SELECT CAST(custom_embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  content, \n  cosineDistance(embeddings, query) AS similarity \nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  similarity ASC \n  LIMIT 5\n"
                 },
                 {
                     "cell_type": "markdown",
@@ -734,7 +750,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-20T08:48:57+05:30",
+        "last_modified": "2024-06-20T18:22:46+05:30",
         "created_at": "2024-05-18T21:29:02+08:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/PDF%20extraction%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
@@ -876,7 +892,15 @@
                     "cell_type": "markdown",
                     "id": "3df08e2a-3c44-4ce4-96c0-56992cd16eee",
                     "metadata": {},
-                    "source": "### Embeddings\nLangdb supports convenient way to generate embeddings on the fly. You can use the built-in `embed()` function for development and testing. \n\nYou can also use `OpenAI` or other providers."
+                    "source": "### Embeddings\nLangDB offers a convenient method to generate embeddings using the custom embedding type model function for development and testing purposes. Additionally, we can use in-built `embed()` function to generate embeddings."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "a12a9c60",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo', temperature = 0.3, embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100);\n"
                 },
                 {
                     "cell_type": "code",
@@ -906,7 +930,7 @@
                     "id": "9c01c3e3-efdc-42d7-bc2e-a989c68577c3",
                     "metadata": {},
                     "outputs": [],
-                    "source": "SPAWN TASK generate_embeddings\n    BEGIN\nINSERT INTO embeddings_fallback_data\nSELECT p.id, embed(question), p.question \nFROM popqa AS p \nLEFT JOIN embeddings_fallback_data AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id\nLIMIT 10\nEND EVERY 5 second;"
+                    "source": "SPAWN TASK generate_embeddings\n    BEGIN\nINSERT INTO embeddings_fallback_data\nSELECT p.id, custom_embed(question), p.question \nFROM popqa AS p \nLEFT JOIN embeddings_fallback_data AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id\nLIMIT 10\nEND EVERY 5 second;"
                 },
                 {
                     "cell_type": "markdown",
@@ -1010,7 +1034,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT agent_fallback_data(question String \"Query to search question\") AS\n(WITH tbl AS (\n  SELECT CAST(embed($question) AS `Array`(`Float32`)) AS question_embed\n)\nSELECT cosineDistance(embeddings, question_embed) AS similarity, p.id, p.possible_answers\nFROM embeddings_fallback_data AS pe\nJOIN popqa AS p ON p.id = pe.id\nCROSS JOIN tbl\nORDER BY similarity \nLIMIT 10)\nCOMMENT 'Returns top 10 results for the given query with similarity, id, and possible_answers';"
+                    "source": "CREATE AGENT agent_fallback_data(question String \"Query to search question\") AS\n(WITH tbl AS (\n  SELECT CAST(custom_embed($question) AS `Array`(`Float32`)) AS question_embed\n)\nSELECT cosineDistance(embeddings, question_embed) AS similarity, p.id, p.possible_answers\nFROM embeddings_fallback_data AS pe\nJOIN popqa AS p ON p.id = pe.id\nCROSS JOIN tbl\nORDER BY similarity \nLIMIT 10)\nCOMMENT 'Returns top 10 results for the given query with similarity, id, and possible_answers';"
                 },
                 {
                     "cell_type": "code",
@@ -1115,7 +1139,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-20T08:48:57+05:30",
+        "last_modified": "2024-06-20T18:22:46+05:30",
         "created_at": "2024-05-20T14:19:26+03:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/CRAG.ipynb",
         "tags": [
@@ -1719,7 +1743,14 @@
                 {
                     "cell_type": "markdown",
                     "metadata": {},
-                    "source": "### Embeddings\nLangdb supports convenient way to generate embeddings on the fly. You can use the built-in `embed()` function for development and testing. \n\nYou can also use `OpenAI` or other providers."
+                    "source": "### Embeddings\nLangDB offers a convenient method to generate embeddings using the custom embedding type model function for development and testing purposes. Additionally, we can use in-built `embed()` function to generate embeddings."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo', temperature = 0.3, embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100);\n"
                 },
                 {
                     "cell_type": "code",
@@ -1739,7 +1770,7 @@
                 {
                     "cell_type": "markdown",
                     "metadata": {},
-                    "source": "Use `embed()` function to generate embeddings for each chunk and store them into `pdf_embeddings` table.\n\nYou can also use `SPAWN TASK` feature to run this in the background. "
+                    "source": "Use `custom_embed` model to generate embeddings for each chunk and store them into `pdf_embeddings` table.\n\nYou can also use `SPAWN TASK` feature to run this in the background. "
                 },
                 {
                     "cell_type": "code",
@@ -1754,7 +1785,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "INSERT INTO pdf_embeddings\nSELECT p.id, embed(content) FROM pdf_chunks AS p LEFT JOIN pdf_embeddings AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id;"
+                    "source": "INSERT INTO pdf_embeddings\nSELECT p.id, custom_embed(content) FROM pdf_chunks AS p LEFT JOIN pdf_embeddings AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id;"
                 },
                 {
                     "cell_type": "code",
@@ -1789,7 +1820,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT similar(query String \"Query to search similar sections in pdf documents\") AS\nWITH tbl AS (\n  SELECT CAST(embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  content, \n  cosineDistance(embeddings, query) AS similarity \nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdf_chunks AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  similarity DESC \n  LIMIT 5\n"
+                    "source": "CREATE AGENT similar(query String \"Query to search similar sections in pdf documents\") AS\nWITH tbl AS (\n  SELECT CAST(custom_embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  content, \n  cosineDistance(embeddings, query) AS similarity \nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdf_chunks AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  similarity DESC \n  LIMIT 5\n"
                 },
                 {
                     "cell_type": "markdown",
@@ -1967,7 +1998,7 @@
             "nbformat": 4,
             "nbformat_minor": 4
         },
-        "last_modified": "2024-06-20T08:48:57+05:30",
+        "last_modified": "2024-06-20T18:22:46+05:30",
         "created_at": "2024-06-12T12:14:06+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
