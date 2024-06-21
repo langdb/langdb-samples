@@ -255,7 +255,7 @@
                     "id": "61e3cf80-9d0c-4ba6-a9d2-54de6948886b",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3-turbo'\n);"
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
                 },
                 {
                     "cell_type": "markdown",
@@ -352,7 +352,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-20T18:22:46+05:30",
+        "last_modified": "2024-06-21T10:03:29+05:30",
         "created_at": "2024-05-20T23:26:58+08:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data.ipynb",
         "tags": [
@@ -693,7 +693,7 @@
                     "id": "a806ce1b-d6c1-4c1f-95a6-454d733c8eca",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3-turbo'\n);"
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
                 },
                 {
                     "cell_type": "code",
@@ -750,7 +750,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-20T18:22:46+05:30",
+        "last_modified": "2024-06-21T10:03:29+05:30",
         "created_at": "2024-05-18T21:29:02+08:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/PDF%20extraction%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
@@ -944,7 +944,7 @@
                     "id": "d86bc75c-a9c5-4eaf-b21a-694ad67b798b",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3-turbo'\n);"
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
                 },
                 {
                     "cell_type": "markdown",
@@ -1139,7 +1139,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-20T18:22:46+05:30",
+        "last_modified": "2024-06-21T10:03:29+05:30",
         "created_at": "2024-05-20T14:19:26+03:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/CRAG.ipynb",
         "tags": [
@@ -1270,7 +1270,7 @@
                     "id": "1f4f88c2-c86f-412f-b870-866479580a20",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3-turbo'\n);"
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
                 },
                 {
                     "cell_type": "code",
@@ -1441,7 +1441,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-20T08:48:57+05:30",
+        "last_modified": "2024-06-21T10:03:29+05:30",
         "created_at": "2024-06-13T13:07:10+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Sentiment%20Analysis%20Part%202.ipynb",
         "tags": [
@@ -1572,7 +1572,7 @@
                     "id": "4f750345-736a-4156-bebb-c956ff1c1417",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3-turbo'\n);"
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
                 },
                 {
                     "cell_type": "code",
@@ -1659,7 +1659,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-20T08:48:57+05:30",
+        "last_modified": "2024-06-21T10:03:29+05:30",
         "created_at": "2024-06-13T13:07:10+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Sentiment%20Analysis%20Part%201.ipynb",
         "tags": [
@@ -1872,7 +1872,7 @@
                     "execution_count": null,
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3-turbo'\n);"
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
                 },
                 {
                     "cell_type": "code",
@@ -1998,7 +1998,7 @@
             "nbformat": 4,
             "nbformat_minor": 4
         },
-        "last_modified": "2024-06-20T18:47:29+05:30",
+        "last_modified": "2024-06-21T10:03:29+05:30",
         "created_at": "2024-06-12T12:14:06+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
