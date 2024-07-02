@@ -56,17 +56,21 @@ def get_notebook_info(filepath):
         "tags": get_tags_from_title(title)
     }
 
-def main():
-    agents_dir = "agents"
-    output_file = "notebooks_info.json"
-    notebooks_info = []
-    
-    for root, _, files in os.walk(agents_dir):
+def collect_notebooks_info(file_dir, notebooks_info, output_file):
+    for root, _, files in os.walk(file_dir):
         for file in files:
             if file.endswith(".ipynb"):
                 filepath = os.path.join(root, file)
                 notebook_info = get_notebook_info(filepath)
                 notebooks_info.append(notebook_info)
+def main():
+    rag_dir = "rag"
+    getting_started_dir = "getting_started"
+    output_file = "notebooks_info.json"
+    notebooks_info = []
+    
+    collect_notebooks_info(getting_started_dir, notebooks_info, output_file)
+    collect_notebooks_info(rag_dir, notebooks_info, output_file)
     
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(notebooks_info, f, ensure_ascii=False, indent=4)
