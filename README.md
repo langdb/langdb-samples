@@ -9,8 +9,8 @@ Use the LangDB kernel to run the notebook samples.
 
 The repository is structured as follows:
 
-- `getting_started/`: This directory contains notebooks related to simple LLM pipelines.
-- `agents/`: This directory contains notebooks related to agents.
+- `getting_started/`: This directory contains notebooks related to simple LLM pipelines using LangDB.
+- `rag/`: This directory contains notebooks related to RAG concepts.
 
 ## Getting Started
 
@@ -24,10 +24,10 @@ The repository is structured as follows:
 
 | Sample                                           | Description                                  |
 | ------------------------------------------------ | -------------------------------------------- |
-| [Combine Structured Data w/ Unstructured Data](agents/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data.ipynb) | Combine insights from both structured and unstructured data |
-| [Structured Layout Extraction from PDFs and Images](agents/Structured%20Layout%20Extraction%20from%20PDFs%20and%20Images.ipynb) | Convert PDF documents into structured tables |
-| [Corrective RAG](agents/CRAG.ipynb) | Corrective RAG powered by LangDB |
-| [QA on PDF & RAG using LangDB using Postgres](agents/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb) | QA on PDF & RAG using LangDB |
+| [Combine Structured Data w/ Unstructured Data](rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data.ipynb) | Combine insights from both structured and unstructured data |
+| [Structured Layout Extraction from PDFs and Images](rag/Structured%20Layout%20Extraction%20from%20PDFs%20and%20Images.ipynb) | Convert PDF documents into structured tables |
+| [Corrective RAG](rag/CRAG.ipynb) | Corrective RAG powered by LangDB |
+| [QA on PDF & RAG using LangDB using Postgres](rag/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb) | QA on PDF & RAG using LangDB |
 
 
 ## Contributing
