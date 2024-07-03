@@ -5,7 +5,7 @@ import subprocess
 
 GITHUB_REPO_URL = "https://raw.githubusercontent.com/langdb/langdb-samples/main"
 TAGS = ["Agent", "Pdf", "RAG"]
-def get_tags_from_title(title):
+def get_tags_from_title(title, filter_tag):
     tags = []
     for tag in TAGS:
         if tag.lower() in title.lower():
@@ -13,6 +13,8 @@ def get_tags_from_title(title):
     # if tags is empty, default is ["Agent"]
     if not tags:
         tags.append("Agent")
+    if filter_tag:
+        tags.append(filter_tag)
     return tags
 
 def get_git_commit_time(filepath, time_type="last"):
@@ -37,7 +39,7 @@ def get_git_commit_time(filepath, time_type="last"):
         print(f"Error getting {time_type} commit time for {filepath}: {e}")
         return None
 
-def get_notebook_info(filepath):
+def get_notebook_info(filepath, filter_tag):
     with open(filepath, 'r', encoding='utf-8') as f:
         nb = nbformat.read(f, as_version=4)
     
@@ -53,20 +55,24 @@ def get_notebook_info(filepath):
         "last_modified": last_modified,
         "created_at": created_at,
         "file_download_url": file_download_url,
-        "tags": get_tags_from_title(title)
+        "tags": get_tags_from_title(title, filter_tag)
     }
 
-def main():
-    agents_dir = "agents"
-    output_file = "notebooks_info.json"
-    notebooks_info = []
-    
-    for root, _, files in os.walk(agents_dir):
+def collect_notebooks_info(file_dir, notebooks_info, filter_tag):
+    for root, _, files in os.walk(file_dir):
         for file in files:
             if file.endswith(".ipynb"):
                 filepath = os.path.join(root, file)
-                notebook_info = get_notebook_info(filepath)
+                notebook_info = get_notebook_info(filepath, filter_tag= filter_tag)
                 notebooks_info.append(notebook_info)
+def main():
+    rag_dir = "rag"
+    getting_started_dir = "getting_started"
+    output_file = "notebooks_info.json"
+    notebooks_info = []
+    
+    collect_notebooks_info(getting_started_dir, notebooks_info, 'Getting Started')
+    collect_notebooks_info(rag_dir, notebooks_info, 'RAG')
     
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(notebooks_info, f, ensure_ascii=False, indent=4)
