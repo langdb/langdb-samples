@@ -26,9 +26,9 @@ The repository is structured as follows:
 
 | Sample                                           | Description                                  |
 | ------------------------------------------------ | -------------------------------------------- |
-| [Combine Structured Data w/ Unstructured Data](rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data.ipynb) | Combine insights from both structured and unstructured data |
+| [Combine Structured Data w/ Unstructured Data using Postgres and LangDB](rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20using%20Postgres.ipynb) | Combine insights from both structured and unstructured data |
 | [Corrective RAG](rag/CRAG.ipynb) | Corrective RAG powered by LangDB |
-| [QA on PDF & RAG using LangDB using Postgres](rag/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb) | QA on PDF & RAG using LangDB |
+| [QA on PDF & RAG using LangDB](rag/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb) | QA on PDF & RAG using LangDB |
 
 
 ## Contributing
