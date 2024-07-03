@@ -471,14 +471,22 @@
                 }
             ],
             "metadata": {
+                "kernelspec": {
+                    "display_name": "langdb",
+                    "language": "sql",
+                    "name": "langdb"
+                },
                 "language_info": {
-                    "name": "python"
+                    "codemirror_mode": "sql",
+                    "file_extension": ".sql",
+                    "mimetype": "text/x-sql",
+                    "name": "sql"
                 }
             },
             "nbformat": 4,
-            "nbformat_minor": 2
+            "nbformat_minor": 4
         },
-        "last_modified": "2024-07-03T14:23:52+07:00",
+        "last_modified": "2024-07-03T17:35:52+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Using%20Providers.ipynb",
         "tags": [
