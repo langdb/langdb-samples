@@ -1,357 +1,5 @@
 [
     {
-        "title": "Combining Insights from Structured and Unstructured Data",
-        "content": {
-            "cells": [
-                {
-                    "cell_type": "markdown",
-                    "id": "328cb4cb-509e-4411-8bd4-dadf4edd49c9",
-                    "metadata": {},
-                    "source": "# Combining Structured and Unstructured Data\nWe will recreate an example use case from [LlamaIndex](https://docs.llamaindex.ai/en/stable/examples/query_engine/SQLJoinQueryEngine/).\nIn this example, we will create a model that will combine insights from structured data (SQL tables) and unstructured data (Wikipedia articles) to answer user queries. "
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "79a79bad-184c-4a98-bf42-4ecf5149d7c8",
-                    "metadata": {},
-                    "source": "## Schema Creation and Loading Data\nWe first create a cities table which contains information about different cities regarding their geographic location, population, and the country in which they are located."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 1,
-                    "id": "6940163f-1096-4b9d-a6d4-acc5f6fe4076",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE TABLE cities (\n\t`id` UUID DEFAULT generateUUIDv4(),\n\t`city` String,\n\t`lat` Decimal64(3),\n\t`lng` Decimal64(3),\n\t`country` String,\n\t`population` UInt64\n) engine = MergeTree\nORDER BY id;"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 2,
-                    "id": "68d69dfd-1194-43d9-a806-431509cbb045",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "INSERT INTO cities(city, lat, lng, country, population) VALUES\n    ('Tokyo','35.6897','139.6922','Japan','37732000'),\n    ('Jakarta','-6.1750','106.8275','Indonesia','33756000'),\n    ('Delhi','28.6100','77.2300','India','32226000'),\n    ('Manila','14.5958','120.9772','Philippines','24922000'),\n    ('Dhaka','23.7639','90.3889','Bangladesh','18627000'),\n    ('Beijing','39.9067','116.3975','China','18522000'),\n    ('Moscow','55.7558','37.6172','Russia','17332000'),\n    ('Karachi','24.8600','67.0100','Pakistan','15738000'),\n    ('Ho Chi Minh City','10.7756','106.7019','Vietnam','15136000'),\n    ('Singapore','1.3000','103.8000','Singapore','5983000'),\n    ('Tashkent','41.3111','69.2797','Uzbekistan','2956384'),\n    ('Phnom Penh','11.5694','104.9211','Cambodia','2129371'),\n    ('Bishkek','42.8747','74.6122','Kyrgyzstan','1120827'),\n    ('Tbilisi','41.7225','44.7925','Georgia','1118035'),\n    ('Sri Jayewardenepura Kotte','6.9108','79.8878','Sri Lanka','115826');"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "0b527626-271b-47cf-b9a5-270d44e10934",
-                    "metadata": {},
-                    "source": "## Loading the PDFs\nWe create a pdfs table to store the PDFs containing information about the cities, obtained from Wikipedia. We extract semantically chunked data from the PDFs using the built-in function load_pdf_text(), and insert it into the tables."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 3,
-                    "id": "31beea1f-1388-469f-bd36-2944ece96c97",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE TABLE pdf_links (\n\t`city` String,\n\t`link` String\n) engine = MergeTree\norder by city;"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 4,
-                    "id": "c523ce6a-9f4c-43cd-9f47-e4bda8f97ef1",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE TABLE pdfs (\n  `id` UUID DEFAULT generateUUIDv4(),\n  `content` String, \n  `metadata` String, \n  `city` String\n) engine = MergeTree\norder by (id, content);"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 5,
-                    "id": "1337530a-de00-4831-bf51-b7ceeb117481",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "INSERT INTO pdf_links(city, link) VALUES\n    ('Beijing','https://en.wikipedia.org/api/rest_v1/page/pdf/Beijing'),\n    ('Tokyo','https://en.wikipedia.org/api/rest_v1/page/pdf/Tokyo'),\n    ('Jakarta','https://en.wikipedia.org/api/rest_v1/page/pdf/Jakarta'),\n    ('Delhi','https://en.wikipedia.org/api/rest_v1/page/pdf/New_Delhi'),\n    ('Manila','https://en.wikipedia.org/api/rest_v1/page/pdf/Manila'),\n    ('Dhaka','https://en.wikipedia.org/api/rest_v1/page/pdf/Dhaka'),\n    ('Moscow','https://en.wikipedia.org/api/rest_v1/page/pdf/Moscow'),\n    ('Karachi','https://en.wikipedia.org/api/rest_v1/page/pdf/Karachi'),\n    ('Singapore','https://en.wikipedia.org/api/rest_v1/page/pdf/Singapore'),\n    ('Tashkent','https://en.wikipedia.org/api/rest_v1/page/pdf/Tashkent'),\n    ('Phnom Penh','https://en.wikipedia.org/api/rest_v1/page/pdf/Phnom_Penh'),\n    ('Bishkek','https://en.wikipedia.org/api/rest_v1/page/pdf/Bishkek'),\n    ('Tbilisi','https://en.wikipedia.org/api/rest_v1/page/pdf/Tbilisi'),\n    ('Sri Jayewardenepura Kotte','https://en.wikipedia.org/api/rest_v1/page/pdf/Sri_Jayawardenepura_Kotte'),\n    ('Ho Chi Minh City','https://en.wikipedia.org/api/rest_v1/page/pdf/Ho_Chi_Minh_City');"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 6,
-                    "id": "d1f1e71b-3e0a-4907-9f60-c0b951959592",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "INSERT INTO pdfs(content, metadata, city) \nSELECT content, metadata, JSONExtractString(metadata,'city')\nFROM load_pdf_text((SELECT link, city from pdf_links));"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "c66fe141-8a03-4231-ba8f-cde076b3980f",
-                    "metadata": {},
-                    "source": "## Embeddings\nLangDB offers a convenient method to generate embeddings using the custom embedding type model function for development and testing purposes. Additionally, we can use in-built `embed()` function to generate embeddings."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "81f1023b",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo', temperature = 0.3, embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100);\n"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 22,
-                    "id": "f1341902-dad1-4b4e-9511-227ee039ec50",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE TABLE pdf_embeddings (\n  id UUID,\n  embeddings `Array`(`Float32`),\n) \nengine = MergeTree\norder by id;"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "6c47e390-05cd-4dc8-9379-f14686f60d38",
-                    "metadata": {},
-                    "source": "While we can use `custom_embed()` to generate embeddings for each chunk and store them, we can also run the whole process in background using `SPAWN TASK` which essentially creates a cron job."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 36,
-                    "id": "3d386558-b4cd-477b-b4c8-51aab12261ec",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": "Spawned Task: generate_embeddings with id: e7f9e793-181e-490b-b56e-2c70958b0946"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "SPAWN TASK generate_embeddings\nBEGIN\n    INSERT INTO pdf_embeddings\n    select p.id, custom_embed(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 5 second\nWITH MAX_POOL_SIZE 5;"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "7ee88a0c-96ca-4177-bcc9-b11176e3224f",
-                    "metadata": {},
-                    "source": "## AGENT Creation\nFirst, we create agent which utilize vector search to find relevant chunks. While the cities_info_generic could be utilized to get information about the query."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 24,
-                    "id": "3d554b8a-ad85-4aab-8ef8-8191fd19b30c",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE AGENT cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(custom_embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'get information about cities';"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "45668de6-c81a-4e8a-b8a9-0b6010f1c1e4",
-                    "metadata": {},
-                    "source": "### Using Agent\n\nUsing the agent to understand how similarity search works"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 20,
-                    "id": "9203b8c1-ec3c-499d-83c7-5288b076ffef",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>id</th>\n      <th>content</th>\n      <th>cosineDistance</th>\n      <th>city</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>0e6496a7-3048-469a-9b95-430c3b9bd1ea</td>\n      <td>Moscow was the host city of the 1980 Summer Olympics, with the yachting events being held at Tallinn, in present-day\\r\\nEstonia. Large sports facilities and the main international airport, Sheremetyevo Terminal 2, were built in preparation for\\r\\nthe 1980 Summer Olympics. Moscow had made a bid for the 2012 Summer\\r\\nOlympics. However, when final voting commenced on July 6, 2005, Moscow was\\r\\nthe first city to be eliminated from further rounds. The Games were awarded to\\r\\nLondon.\\r\\nThe most titled ice hockey team in the Soviet Union and in the world, HC CSKA\\r\\nMoscow comes from Moscow. Other big ice hockey clubs from Moscow are HC\\r\\nDynamo Moscow, which was the second most titled team in the Soviet Union, and\\r\\nHC Spartak Moscow.\\r\\nThe most titled Soviet, Russian, and one of the most titled Euroleague clubs, is the\\r\\nbasketball club from Moscow PBC CSKA Moscow. Moscow hosted the\\r\\nEuroBasket in 1953 and 1965.\\r\\nMoscow had more winners at the USSR and Russian Chess Championship than any other city.</td>\n      <td>0.167045</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>0e6496a7-3048-469a-9b95-430c3b9bd1ea</td>\n      <td>Moscow was the host city of the 1980 Summer Olympics, with the yachting events being held at Tallinn, in present-day\\r\\nEstonia. Large sports facilities and the main international airport, Sheremetyevo Terminal 2, were built in preparation for\\r\\nthe 1980 Summer Olympics. Moscow had made a bid for the 2012 Summer\\r\\nOlympics. However, when final voting commenced on July 6, 2005, Moscow was\\r\\nthe first city to be eliminated from further rounds. The Games were awarded to\\r\\nLondon.\\r\\nThe most titled ice hockey team in the Soviet Union and in the world, HC CSKA\\r\\nMoscow comes from Moscow. Other big ice hockey clubs from Moscow are HC\\r\\nDynamo Moscow, which was the second most titled team in the Soviet Union, and\\r\\nHC Spartak Moscow.\\r\\nThe most titled Soviet, Russian, and one of the most titled Euroleague clubs, is the\\r\\nbasketball club from Moscow PBC CSKA Moscow. Moscow hosted the\\r\\nEuroBasket in 1953 and 1965.\\r\\nMoscow had more winners at the USSR and Russian Chess Championship than any other city.</td>\n      <td>0.167045</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>ae687a62-73a5-411a-be00-46fedce90931</td>\n      <td>The Bolshoi Theatre\\r\\nThe Luzhniki Stadium hosted the\\r\\n1980 Summer Olympics and the\\r\\n2018 FIFA World Cup Final.\\r\\nSparrow Hills fanzone during 2018\\r\\nFIFA World Cup\\r\\nSC Olimpiyskiy was built for the\\r\\n1980 Summer Olympics.\\r\\nCSKAArena during a game of KHL,\\r\\nconsidered to be the second-best ice\\r\\nhockey league in the world\\r\\nMoscow will get its own branch of the Hermitage Museum in 2024, with authorities having agreed upon the final project, to be executed by Hani Rashid, co\u0002founder of New York-based 'Asymptote Architecture' - the same bureau that's behind the city's stock market building, the Busan-based World Business Center\\r\\nSolomon Tower and the Strata Tower in Abu-Dhabi.\\r\\n[136]\\r\\nMoscow is the heart of the Russian performing arts, including ballet and film, with 68\\r\\nmuseums\\r\\n[137] 103[138] theaters, 132 cinemas and 24 concert halls. Among Moscow's theaters\\r\\nand ballet studios is the Bolshoi Theatre and the Malyi Theatre\\r\\n[139] as well as Vakhtangov\\r\\nTheatre and Moscow Art Theatre.</td>\n      <td>0.167222</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>ae687a62-73a5-411a-be00-46fedce90931</td>\n      <td>The Bolshoi Theatre\\r\\nThe Luzhniki Stadium hosted the\\r\\n1980 Summer Olympics and the\\r\\n2018 FIFA World Cup Final.\\r\\nSparrow Hills fanzone during 2018\\r\\nFIFA World Cup\\r\\nSC Olimpiyskiy was built for the\\r\\n1980 Summer Olympics.\\r\\nCSKAArena during a game of KHL,\\r\\nconsidered to be the second-best ice\\r\\nhockey league in the world\\r\\nMoscow will get its own branch of the Hermitage Museum in 2024, with authorities having agreed upon the final project, to be executed by Hani Rashid, co\u0002founder of New York-based 'Asymptote Architecture' - the same bureau that's behind the city's stock market building, the Busan-based World Business Center\\r\\nSolomon Tower and the Strata Tower in Abu-Dhabi.\\r\\n[136]\\r\\nMoscow is the heart of the Russian performing arts, including ballet and film, with 68\\r\\nmuseums\\r\\n[137] 103[138] theaters, 132 cinemas and 24 concert halls. Among Moscow's theaters\\r\\nand ballet studios is the Bolshoi Theatre and the Malyi Theatre\\r\\n[139] as well as Vakhtangov\\r\\nTheatre and Moscow Art Theatre.</td>\n      <td>0.167222</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>77322727-8eb9-4671-a0ae-c40065bf4bcd</td>\n      <td>The China Central Television\\r\\nHeadquarters building in CBD\\r\\nA scene from the opening\\r\\nceremonies of the 2008 Summer\\r\\nOlympic Games\\r\\nBeijing Workers' Stadium at night as\\r\\nviewed from Sanlitun\\r\\nFamous rock bands and solo artists from Beijing include Cui Jian, Dou Wei, He Yong, Pu Shu, Tang\\r\\nDynasty, Black Panther, The Flowers, 43 Baojia Street, etc.\\r\\n[220]\\r\\nBeijing has hosted numerous international and national sporting events, the most notables was the 2008\\r\\nSummer Olympic and Paralympic Games and the 2022 Winter Olympics and the Paralympics. Other multi\u0002sport international events held in Beijing include the 2001 Summer Universiade and the 1990 Asian Games.\\r\\nSingle-sport international competitions include the Beijing Marathon (annually since 1981), China Open of\\r\\nTennis (1993–97, annually since 2004), ISU Grand Prix of Figure Skating Cup of China (2003, 2004, 2005,\\r\\n2008, 2009 and 2010), World Professional Billiards and Snooker Association China Open for Snooker</td>\n      <td>0.170085</td>\n      <td>Beijing</td>\n    </tr>\n  </tbody>\n</table>"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "SELECT * from cities_info_generic('Olympics')"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "b1dc2054-453d-4e49-94b5-a4976740b655",
-                    "metadata": {},
-                    "source": "We create another tool, `get_semantics`, which uses the built-in table function `semantics()`, which returns the schemas of all the tables in the database."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 26,
-                    "id": "eb8b7f96-ee30-48da-b6cf-2f087c6aa043",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE AGENT get_semantics() AS \n(SELECT * FROM semantics())\nCOMMENT 'Schemas of all the tables';"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "d899d635-0429-43e5-b5cd-ea31d111f1ea",
-                    "metadata": {},
-                    "source": "## Prompt Creation\nWe create a prompt for our use case based on the ReAct framework."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "c0877078-ed54-43d2-9daa-0c720ddab3ed",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE PROMPT cities_prompt (\nsystem \"You are a master data agent. Your task is to provide useful information to the user about a city based on the question.\n  Only use information retrieved using the supplied tools.\n  For doing this, first, fetch the schema of the tables in the database using the get_semantics tool. Understand the schema of the cities table\n  thoroughly to understand the kind of information you can look up using a SQL query on the provided database.\n  If required, generate a valid Clickhouse SQL query to get any required information from the cities table and use the langdb_raw_query to execute that query and get the result.\n  You can retrieve information regarding cities using the cities_info_generic tool. The tool uses similarity search based on cosine distance to return the most relevant information snippets related to the query.\n\n  When to use cities_info_generic tool:\n  Use this tool to look up the information when the city is not known and you are not able to use a SQL query to find the required city.\n\n  Make sure to use the following format for the output:\n  Question: the input question you must answer\n  Thought: you should always think about what to do\n  Action: the action to take, should be one of the tools\n  Action Input: the input to the action\n  Observation: the result of the action\n  ... (this Thought/Action/Action Input/Observation can repeat N times)\n  Thought: I think I have enough information to answer the question. Based on the data retrieved, I can now answer the question.\n  Final Answer: the final answer to the original input question with data to support it\n  Begin!\n  Question: {{input}}\n  Thought: I need to understand the semantics of the data structure available in the database.\"\n);"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "e6832054-e6a9-4ff7-bd39-64ec8a3edc69",
-                    "metadata": {},
-                    "source": "## Provider Creation\nBefore Creating our model, we will create a provider, which will store our engine and make it reusable"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "61e3cf80-9d0c-4ba6-a9d2-54de6948886b",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "903dca71-d6b9-44e9-8918-d7754b29a5e6",
-                    "metadata": {},
-                    "source": "## Model Creation\nNow, we can create the models that can leverage the tools that were created earlier."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 32,
-                    "id": "3ca4e299-0869-4cdd-af72-2c6107dce164",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) USING open_ai_provider()\nPROMPT cities_prompt\nTOOLS (langdb_raw_query, get_semantics, cities_info_generic)\nSETTINGS retries = 3;"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "e5678d23-fd2f-4bfd-b161-f8fd9d6e0124",
-                    "metadata": {},
-                    "source": "Along with the tools we had created, we have also attached `langdb_raw_query`, a built-in static tool, which allows the model to execute raw SELECT (only) queries on the database."
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "30aef246-cfaf-43a8-ba0a-f3ed427162ea",
-                    "metadata": {},
-                    "source": "## Model Execution\nUsing the created model, we can execute queries which would require the LLM to use both structured (cities table) and unstructured (Wikipedia articles) data through the provided tools.\n"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 26,
-                    "id": "d250e355-a9e1-409d-8057-8197e1824a09",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": "Question: Tell me about the arts and culture of the city with the highest population\nThought: I need to understand the arts and culture of Tokyo, the city with the highest population.\nAction: Use cities_info_generic tool\nAction Input: query: \"Tokyo arts and culture\"\nObservation: The tool will provide information about the arts and culture of Tokyo.\n\nAction: functions.cities_info_generic\nAction Input: query: \"Tokyo arts and culture\"\n- Tokyo has a vibrant arts and culture scene. It is known for its traditional Japanese plays with venues like the National Noh Theatre and Kabuki-za. Additionally, the New National Theatre Tokyo in Shibuya hosts opera, ballet, contemporary dance, and drama performances.\n- Tokyo is home to numerous theatres including the National Theatre of Japan, the Imperial Theatre, Meiji-za, NHK Hall, Tokyo Metropolitan Theatre, Tokyo Opera City, and Tokyo International Forum.\n- The city offers a diverse array of leisure and entertainment options, featuring major aquariums like Shinagawa Aquarium, Tokyo Sea Life Park, Sunshine Aquarium, and Sumida Aquarium.\n- Tokyo has notable museums like the Tokyo Metropolitan Garden Art Museum in Minato and the Tobacco and Salt Museum in Sumida, which houses extensive collections.\n- The nightlife district of Tokyo is centered around areas like Shibuya, Shinjuku, and Roppongi, known for their bars, clubs, live music venues, and host and hostess clubs.\n- Tokyo is also famous for its festivals such as the SannÅ Matsuri, Sanja Festival, and Kanda Matsuri, featuring elaborately decorated floats and parades.\n\nFinal Answer: Tokyo, the city with the highest population, boasts a rich arts and culture scene with traditional Japanese plays, diverse theatres, museums, aquariums, and lively nightlife districts, along with vibrant festivals."
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "select cities_info_model('Tell me about the arts and culture of the city with the highest population');"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "24230b36-c168-473b-aa85-ad13c46346d1",
-                    "metadata": {},
-                    "source": "In the above query, the model generates a SQL query to find the city with the most populous city and invokes the `langdb_raw_query` tool to execute the generated query. It uses the result from the query, i.e. Tokyo, and invokes the `cities_info_generic` tool to get more information about the arts and culture of the city."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 27,
-                    "id": "3f1320f6-3a2a-4781-bdf3-e783346d3069",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": "The \"cities\" table in the database has the following schema:\n- id: UUID\n- city: String\n- lat: Decimal(18, 3)\n- lng: Decimal(18, 3)\n- country: String\n- population: UInt64\n\nThis schema includes information about cities such as city name, latitude, longitude, country, and population. Now, I can proceed to find the population of the city that conducted the 1964 Summer Olympics. Let's retrieve this information.Question: Whats the population of the city which conducted the 1964 Summer Olympics\nThought: I need to understand the semantics of the data structure available in the database.\nAction: Execute a raw SQL query to retrieve the population of Tokyo city.\nObservation: The population of Tokyo city is 37,732,000.\nThought: I think I have enough information to answer the question. Based on the data retrieved, I can now answer the question.\nFinal Answer: The population of Tokyo, the city that conducted the 1964 Summer Olympics, is 37,732,000."
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "select cities_info_model('Whats the population of the city which conducted the 1964 Summer Olympics');"
-                }
-            ],
-            "metadata": {
-                "kernelspec": {
-                    "display_name": "langdb",
-                    "language": "sql",
-                    "name": "langdb"
-                },
-                "language_info": {
-                    "codemirror_mode": "sql",
-                    "file_extension": ".sql",
-                    "mimetype": "text/x-sql",
-                    "name": "sql"
-                }
-            },
-            "nbformat": 4,
-            "nbformat_minor": 5
-        },
-        "last_modified": "2024-07-01T12:50:10+05:30",
-        "created_at": "2024-05-20T23:26:58+08:00",
-        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data.ipynb",
-        "tags": [
-            "Agent"
-        ]
-    },
-    {
         "title": "Structured Layout Extraction from PDFs and Images",
         "content": {
             "cells": [
@@ -482,11 +130,12 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-13T13:07:10+05:30",
-        "created_at": "2024-06-13T13:07:10+05:30",
-        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Structured%20Layout%20Extraction%20from%20PDFs%20and%20Images.ipynb",
+        "last_modified": "2024-07-03T14:23:52+07:00",
+        "created_at": "2024-07-03T14:23:52+07:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Structured%20Layout%20Extraction%20from%20PDFs%20and%20Images.ipynb",
         "tags": [
-            "Pdf"
+            "Pdf",
+            "Getting Started"
         ]
     },
     {
@@ -571,6 +220,22 @@
                 },
                 {
                     "cell_type": "markdown",
+                    "id": "f26ea1ab",
+                    "metadata": {
+                        "jp-MarkdownHeadingCollapsed": true
+                    },
+                    "source": "### Using Provider\n\nWe will be reusing the `open_ai_provider` we created in [`Using Providers`](Using%20Providers.ipynb).\n\nIf you haven't created one yet, create one with the following command:"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "8e2b837d",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
+                },
+                {
+                    "cell_type": "markdown",
                     "id": "21d4570e-6cd0-4b47-8b36-29c62911c1fe",
                     "metadata": {},
                     "source": "### Embeddings\nLangDB offers a convenient method to generate embeddings using the custom embedding type model function for development and testing purposes. Additionally, we can use in-built `embed()` function to generate embeddings."
@@ -581,7 +246,7 @@
                     "id": "291d47d7",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) ENGINE = OpenAI(api_key ='sk-proj-xxx', model_name = 'gpt-3.5-turbo', temperature = 0.3, embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100);\n"
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
                 },
                 {
                     "cell_type": "code",
@@ -681,14 +346,6 @@
                 },
                 {
                     "cell_type": "code",
-                    "execution_count": null,
-                    "id": "a806ce1b-d6c1-4c1f-95a6-454d733c8eca",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
-                },
-                {
-                    "cell_type": "code",
                     "execution_count": 49,
                     "id": "096e95ed-4a8c-4e04-8923-8ab69dbe6e08",
                     "metadata": {},
@@ -742,12 +399,974 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-21T10:03:29+05:30",
-        "created_at": "2024-05-18T21:29:02+08:00",
-        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/PDF%20extraction%20&%20RAG%20using%20LangDB.ipynb",
+        "last_modified": "2024-07-03T14:23:52+07:00",
+        "created_at": "2024-07-03T14:23:52+07:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/PDF%20extraction%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
             "Pdf",
-            "RAG"
+            "RAG",
+            "Getting Started"
+        ]
+    },
+    {
+        "title": "Using Providers",
+        "content": {
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "metadata": {},
+                    "source": "# Using Providers\nThis notebook goes over, how to create Providers.\n\n## Provider Creation\n\nWe will be creating providers for Completion Model as well as Embeddings\n"
+                },
+                {
+                    "cell_type": "markdown",
+                    "metadata": {},
+                    "source": "\n### Model Provider\n\nWe will create a provider that will store our engine, api key and model params and make it reusable."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "metadata": {
+                        "vscode": {
+                            "languageId": "sql"
+                        }
+                    },
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "metadata": {},
+                    "source": "Now this `open_ai_provider` will be reusable for completion models as well as embeddings models.\n\n### Completion MODEL"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "metadata": {
+                        "vscode": {
+                            "languageId": "sql"
+                        }
+                    },
+                    "outputs": [],
+                    "source": "CREATE MODEL example_model(\n    input\n) USING open_ai_provider()\nPROMPT ( system \"You are an helpful assistant. Help the user with his queries\",\nhuman \"{{input}}\"\n);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "metadata": {
+                        "vscode": {
+                            "languageId": "sql"
+                        }
+                    },
+                    "source": "## Embeddings MODEL\n\nWe will be using the same provider for embedding models."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "metadata": {
+                        "vscode": {
+                            "languageId": "sql"
+                        }
+                    },
+                    "outputs": [],
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS example_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
+                }
+            ],
+            "metadata": {
+                "language_info": {
+                    "name": "python"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 2
+        },
+        "last_modified": "2024-07-03T14:23:52+07:00",
+        "created_at": "2024-07-03T14:23:52+07:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Using%20Providers.ipynb",
+        "tags": [
+            "Agent",
+            "Getting Started"
+        ]
+    },
+    {
+        "title": "RAG Creation using Postgres",
+        "content": {
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "id": "328cb4cb-509e-4411-8bd4-dadf4edd49c9",
+                    "metadata": {},
+                    "source": "# Combining Structured and Unstructured Data\nWe will recreate an example use case from [LlamaIndex](https://docs.llamaindex.ai/en/stable/examples/query_engine/SQLJoinQueryEngine/).\nIn this example, we will create a model that will combine insights from structured data (SQL tables) and unstructured data (Wikipedia articles) to answer user queries. "
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "79a79bad-184c-4a98-bf42-4ecf5149d7c8",
+                    "metadata": {
+                        "jp-MarkdownHeadingCollapsed": true
+                    },
+                    "source": "### Schema Creation and Loading Data in PostgreSQL\nWe first create a cities table which contains information about different cities regarding their geographic location, population, and the country in which they are located.\n\nYou can run the following code to create the table and insert some sample data or use the credentials in the following code.:"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "55f46dd6",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE TABLE cities (\n    id UUID DEFAULT gen_random_uuid(),\n    city VARCHAR(255),\n    lat DECIMAL(10, 3),\n    lng DECIMAL(10, 3),\n    country VARCHAR(255),\n    population BIGINT\n);\n\nINSERT INTO cities(city, lat, lng, country, population) VALUES\n    ('Tokyo','35.6897','139.6922','Japan','37732000'),\n    ('Jakarta','-6.1750','106.8275','Indonesia','33756000'),\n    ('Delhi','28.6100','77.2300','India','32226000'),\n    ('Manila','14.5958','120.9772','Philippines','24922000'),\n    ('Dhaka','23.7639','90.3889','Bangladesh','18627000'),\n    ('Beijing','39.9067','116.3975','China','18522000'),\n    ('Moscow','55.7558','37.6172','Russia','17332000'),\n    ('Karachi','24.8600','67.0100','Pakistan','15738000'),\n    ('Ho Chi Minh City','10.7756','106.7019','Vietnam','15136000'),\n    ('Singapore','1.3000','103.8000','Singapore','5983000'),\n    ('Tashkent','41.3111','69.2797','Uzbekistan','2956384'),\n    ('Phnom Penh','11.5694','104.9211','Cambodia','2129371'),\n    ('Bishkek','42.8747','74.6122','Kyrgyzstan','1120827'),\n    ('Tbilisi','41.7225','44.7925','Georgia','1118035'),\n    ('Sri Jayewardenepura Kotte','6.9108','79.8878','Sri Lanka','115826');\n\n\n\nCREATE TABLE pdf_links (\n    city VARCHAR(255),\n    link VARCHAR(255)\n);\n\n\nINSERT INTO pdf_links(city, link) VALUES\n    ('Beijing','https://en.wikipedia.org/api/rest_v1/page/pdf/Beijing'),\n    ('Tokyo','https://en.wikipedia.org/api/rest_v1/page/pdf/Tokyo'),\n    ('Jakarta','https://en.wikipedia.org/api/rest_v1/page/pdf/Jakarta'),\n    ('Delhi','https://en.wikipedia.org/api/rest_v1/page/pdf/New_Delhi'),\n    ('Manila','https://en.wikipedia.org/api/rest_v1/page/pdf/Manila'),\n    ('Dhaka','https://en.wikipedia.org/api/rest_v1/page/pdf/Dhaka'),\n    ('Moscow','https://en.wikipedia.org/api/rest_v1/page/pdf/Moscow'),\n    ('Karachi','https://en.wikipedia.org/api/rest_v1/page/pdf/Karachi'),\n    ('Singapore','https://en.wikipedia.org/api/rest_v1/page/pdf/Singapore'),\n    ('Tashkent','https://en.wikipedia.org/api/rest_v1/page/pdf/Tashkent'),\n    ('Phnom Penh','https://en.wikipedia.org/api/rest_v1/page/pdf/Phnom_Penh'),\n    ('Bishkek','https://en.wikipedia.org/api/rest_v1/page/pdf/Bishkek'),\n    ('Tbilisi','https://en.wikipedia.org/api/rest_v1/page/pdf/Tbilisi'),\n    ('Sri Jayewardenepura Kotte','https://en.wikipedia.org/api/rest_v1/page/pdf/Sri_Jayawardenepura_Kotte'),\n    ('Ho Chi Minh City','https://en.wikipedia.org/api/rest_v1/page/pdf/Ho_Chi_Minh_City');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "a112e713",
+                    "metadata": {},
+                    "source": "Once the data has been loaded into postgres. We can move over to LangDB.\n## Loading Data in LangDB\n\nYou can replace the credentials in the following code with your own."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 1,
+                    "id": "6940163f-1096-4b9d-a6d4-acc5f6fe4076",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE cities (\n\t`id` UUID DEFAULT generateUUIDv4(),\n\t`city` String,\n\t`lat` Decimal64(3),\n\t`lng` Decimal64(3),\n\t`country` String,\n\t`population` UInt64\n) engine = PostgreSQL('aws-0-ap-southeast-1.pooler.supabase.com', 'postgres', 'cities', 'langdb.ballibhxhsacfkzrwgjk', 'langdb');"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 2,
+                    "id": "68d69dfd-1194-43d9-a806-431509cbb045",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE pdf_links (\n\t`city` String,\n\t`link` String\n) engine = PostgreSQL('aws-0-ap-southeast-1.pooler.supabase.com', 'postgres', 'pdf_links', 'langdb.ballibhxhsacfkzrwgjk', 'langdb');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "0b527626-271b-47cf-b9a5-270d44e10934",
+                    "metadata": {},
+                    "source": "### Loading the PDFs\nWe create a pdfs table to store the PDFs containing information about the cities, obtained from Wikipedia. We extract semantically chunked data from the PDFs using the built-in function load_pdf_text(), and insert it into the tables."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 4,
+                    "id": "c523ce6a-9f4c-43cd-9f47-e4bda8f97ef1",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE pdfs (\n  `id` UUID DEFAULT generateUUIDv4(),\n  `content` String, \n  `metadata` String, \n  `city` String\n) engine = MergeTree\norder by (id, content);"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 6,
+                    "id": "d1f1e71b-3e0a-4907-9f60-c0b951959592",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "INSERT INTO pdfs(content, metadata, city) \nSELECT content, metadata, JSONExtractString(metadata,'city')\nFROM load_pdf_text((SELECT link, city from pdf_links));"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "fdb45e72",
+                    "metadata": {
+                        "jp-MarkdownHeadingCollapsed": true
+                    },
+                    "source": "### Using Provider\n\nWe will be reusing the `open_ai_provider` we created in [`Using Providers`](Using%20Providers.ipynb).\n\nIf you haven't created one yet, create one with the following command:"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "87260340",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "c66fe141-8a03-4231-ba8f-cde076b3980f",
+                    "metadata": {},
+                    "source": "## Embeddings\nLangDB offers a convenient method to generate embeddings using the custom embedding type model function for development and testing purposes. Additionally, we can use in-built `embed()` function to generate embeddings."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "81f1023b",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 22,
+                    "id": "f1341902-dad1-4b4e-9511-227ee039ec50",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE pdf_embeddings (\n  id UUID,\n  embeddings `Array`(`Float32`),\n) \nengine = MergeTree\norder by id;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "6c47e390-05cd-4dc8-9379-f14686f60d38",
+                    "metadata": {},
+                    "source": "While we can use `custom_embed()` to generate embeddings for each chunk and store them, we can also run the whole process in background using `SPAWN TASK` which essentially creates a cron job."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 36,
+                    "id": "3d386558-b4cd-477b-b4c8-51aab12261ec",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": "Spawned Task: generate_embeddings with id: e7f9e793-181e-490b-b56e-2c70958b0946"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "SPAWN TASK generate_embeddings\nBEGIN\n    INSERT INTO pdf_embeddings\n    select p.id, custom_embed(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 5 second\nWITH MAX_POOL_SIZE 5;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "7ee88a0c-96ca-4177-bcc9-b11176e3224f",
+                    "metadata": {},
+                    "source": "## AGENT Creation\nFirst, we create agent which utilize vector search to find relevant chunks. While the cities_info_generic could be utilized to get information about the query."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 24,
+                    "id": "3d554b8a-ad85-4aab-8ef8-8191fd19b30c",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE AGENT cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(custom_embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'get information about cities';"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "45668de6-c81a-4e8a-b8a9-0b6010f1c1e4",
+                    "metadata": {},
+                    "source": "### Using Agent\n\nUsing the agent to understand how similarity search works"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 20,
+                    "id": "9203b8c1-ec3c-499d-83c7-5288b076ffef",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>id</th>\n      <th>content</th>\n      <th>cosineDistance</th>\n      <th>city</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>0e6496a7-3048-469a-9b95-430c3b9bd1ea</td>\n      <td>Moscow was the host city of the 1980 Summer Olympics, with the yachting events being held at Tallinn, in present-day\\r\\nEstonia. Large sports facilities and the main international airport, Sheremetyevo Terminal 2, were built in preparation for\\r\\nthe 1980 Summer Olympics. Moscow had made a bid for the 2012 Summer\\r\\nOlympics. However, when final voting commenced on July 6, 2005, Moscow was\\r\\nthe first city to be eliminated from further rounds. The Games were awarded to\\r\\nLondon.\\r\\nThe most titled ice hockey team in the Soviet Union and in the world, HC CSKA\\r\\nMoscow comes from Moscow. Other big ice hockey clubs from Moscow are HC\\r\\nDynamo Moscow, which was the second most titled team in the Soviet Union, and\\r\\nHC Spartak Moscow.\\r\\nThe most titled Soviet, Russian, and one of the most titled Euroleague clubs, is the\\r\\nbasketball club from Moscow PBC CSKA Moscow. Moscow hosted the\\r\\nEuroBasket in 1953 and 1965.\\r\\nMoscow had more winners at the USSR and Russian Chess Championship than any other city.</td>\n      <td>0.167045</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>0e6496a7-3048-469a-9b95-430c3b9bd1ea</td>\n      <td>Moscow was the host city of the 1980 Summer Olympics, with the yachting events being held at Tallinn, in present-day\\r\\nEstonia. Large sports facilities and the main international airport, Sheremetyevo Terminal 2, were built in preparation for\\r\\nthe 1980 Summer Olympics. Moscow had made a bid for the 2012 Summer\\r\\nOlympics. However, when final voting commenced on July 6, 2005, Moscow was\\r\\nthe first city to be eliminated from further rounds. The Games were awarded to\\r\\nLondon.\\r\\nThe most titled ice hockey team in the Soviet Union and in the world, HC CSKA\\r\\nMoscow comes from Moscow. Other big ice hockey clubs from Moscow are HC\\r\\nDynamo Moscow, which was the second most titled team in the Soviet Union, and\\r\\nHC Spartak Moscow.\\r\\nThe most titled Soviet, Russian, and one of the most titled Euroleague clubs, is the\\r\\nbasketball club from Moscow PBC CSKA Moscow. Moscow hosted the\\r\\nEuroBasket in 1953 and 1965.\\r\\nMoscow had more winners at the USSR and Russian Chess Championship than any other city.</td>\n      <td>0.167045</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>ae687a62-73a5-411a-be00-46fedce90931</td>\n      <td>The Bolshoi Theatre\\r\\nThe Luzhniki Stadium hosted the\\r\\n1980 Summer Olympics and the\\r\\n2018 FIFA World Cup Final.\\r\\nSparrow Hills fanzone during 2018\\r\\nFIFA World Cup\\r\\nSC Olimpiyskiy was built for the\\r\\n1980 Summer Olympics.\\r\\nCSKAArena during a game of KHL,\\r\\nconsidered to be the second-best ice\\r\\nhockey league in the world\\r\\nMoscow will get its own branch of the Hermitage Museum in 2024, with authorities having agreed upon the final project, to be executed by Hani Rashid, co\u0002founder of New York-based 'Asymptote Architecture' - the same bureau that's behind the city's stock market building, the Busan-based World Business Center\\r\\nSolomon Tower and the Strata Tower in Abu-Dhabi.\\r\\n[136]\\r\\nMoscow is the heart of the Russian performing arts, including ballet and film, with 68\\r\\nmuseums\\r\\n[137] 103[138] theaters, 132 cinemas and 24 concert halls. Among Moscow's theaters\\r\\nand ballet studios is the Bolshoi Theatre and the Malyi Theatre\\r\\n[139] as well as Vakhtangov\\r\\nTheatre and Moscow Art Theatre.</td>\n      <td>0.167222</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>ae687a62-73a5-411a-be00-46fedce90931</td>\n      <td>The Bolshoi Theatre\\r\\nThe Luzhniki Stadium hosted the\\r\\n1980 Summer Olympics and the\\r\\n2018 FIFA World Cup Final.\\r\\nSparrow Hills fanzone during 2018\\r\\nFIFA World Cup\\r\\nSC Olimpiyskiy was built for the\\r\\n1980 Summer Olympics.\\r\\nCSKAArena during a game of KHL,\\r\\nconsidered to be the second-best ice\\r\\nhockey league in the world\\r\\nMoscow will get its own branch of the Hermitage Museum in 2024, with authorities having agreed upon the final project, to be executed by Hani Rashid, co\u0002founder of New York-based 'Asymptote Architecture' - the same bureau that's behind the city's stock market building, the Busan-based World Business Center\\r\\nSolomon Tower and the Strata Tower in Abu-Dhabi.\\r\\n[136]\\r\\nMoscow is the heart of the Russian performing arts, including ballet and film, with 68\\r\\nmuseums\\r\\n[137] 103[138] theaters, 132 cinemas and 24 concert halls. Among Moscow's theaters\\r\\nand ballet studios is the Bolshoi Theatre and the Malyi Theatre\\r\\n[139] as well as Vakhtangov\\r\\nTheatre and Moscow Art Theatre.</td>\n      <td>0.167222</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>77322727-8eb9-4671-a0ae-c40065bf4bcd</td>\n      <td>The China Central Television\\r\\nHeadquarters building in CBD\\r\\nA scene from the opening\\r\\nceremonies of the 2008 Summer\\r\\nOlympic Games\\r\\nBeijing Workers' Stadium at night as\\r\\nviewed from Sanlitun\\r\\nFamous rock bands and solo artists from Beijing include Cui Jian, Dou Wei, He Yong, Pu Shu, Tang\\r\\nDynasty, Black Panther, The Flowers, 43 Baojia Street, etc.\\r\\n[220]\\r\\nBeijing has hosted numerous international and national sporting events, the most notables was the 2008\\r\\nSummer Olympic and Paralympic Games and the 2022 Winter Olympics and the Paralympics. Other multi\u0002sport international events held in Beijing include the 2001 Summer Universiade and the 1990 Asian Games.\\r\\nSingle-sport international competitions include the Beijing Marathon (annually since 1981), China Open of\\r\\nTennis (1993–97, annually since 2004), ISU Grand Prix of Figure Skating Cup of China (2003, 2004, 2005,\\r\\n2008, 2009 and 2010), World Professional Billiards and Snooker Association China Open for Snooker</td>\n      <td>0.170085</td>\n      <td>Beijing</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "SELECT * from cities_info_generic('Olympics')"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "b1dc2054-453d-4e49-94b5-a4976740b655",
+                    "metadata": {},
+                    "source": "We create another tool, `get_semantics`, which uses the built-in table function `semantics()`, which returns the schemas of all the tables in the database."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 26,
+                    "id": "eb8b7f96-ee30-48da-b6cf-2f087c6aa043",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE AGENT get_semantics() AS \n(SELECT * FROM semantics())\nCOMMENT 'Schemas of all the tables';"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "d899d635-0429-43e5-b5cd-ea31d111f1ea",
+                    "metadata": {},
+                    "source": "## Prompt Creation\nWe create a prompt for our use case based on the ReAct framework."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "c0877078-ed54-43d2-9daa-0c720ddab3ed",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROMPT cities_prompt (\nsystem \"You are a master data agent. Your task is to provide useful information to the user about a city based on the question.\n  Only use information retrieved using the supplied tools.\n  For doing this, first, fetch the schema of the tables in the database using the get_semantics tool. Understand the schema of the cities table\n  thoroughly to understand the kind of information you can look up using a SQL query on the provided database.\n  If required, generate a valid Clickhouse SQL query to get any required information from the cities table and use the langdb_raw_query to execute that query and get the result.\n  You can retrieve information regarding cities using the cities_info_generic tool. The tool uses similarity search based on cosine distance to return the most relevant information snippets related to the query.\n\n  When to use cities_info_generic tool:\n  Use this tool to look up the information when the city is not known and you are not able to use a SQL query to find the required city.\n\n  Make sure to use the following format for the output:\n  Question: the input question you must answer\n  Thought: you should always think about what to do\n  Action: the action to take, should be one of the tools\n  Action Input: the input to the action\n  Observation: the result of the action\n  ... (this Thought/Action/Action Input/Observation can repeat N times)\n  Thought: I think I have enough information to answer the question. Based on the data retrieved, I can now answer the question.\n  Final Answer: the final answer to the original input question with data to support it\n  Begin!\n  Question: {{input}}\n  Thought: I need to understand the semantics of the data structure available in the database.\"\n);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "903dca71-d6b9-44e9-8918-d7754b29a5e6",
+                    "metadata": {},
+                    "source": "## Model Creation\nNow, we can create the models that can leverage the tools that were created earlier."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 32,
+                    "id": "3ca4e299-0869-4cdd-af72-2c6107dce164",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) USING open_ai_provider()\nPROMPT cities_prompt\nTOOLS (langdb_raw_query, get_semantics, cities_info_generic)\nSETTINGS retries = 3;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "e5678d23-fd2f-4bfd-b161-f8fd9d6e0124",
+                    "metadata": {},
+                    "source": "Along with the tools we had created, we have also attached `langdb_raw_query`, a built-in static tool, which allows the model to execute raw SELECT (only) queries on the database."
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "30aef246-cfaf-43a8-ba0a-f3ed427162ea",
+                    "metadata": {},
+                    "source": "## Model Execution\nUsing the created model, we can execute queries which would require the LLM to use both structured (cities table) and unstructured (Wikipedia articles) data through the provided tools.\n"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 26,
+                    "id": "d250e355-a9e1-409d-8057-8197e1824a09",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": "Question: Tell me about the arts and culture of the city with the highest population\nThought: I need to understand the arts and culture of Tokyo, the city with the highest population.\nAction: Use cities_info_generic tool\nAction Input: query: \"Tokyo arts and culture\"\nObservation: The tool will provide information about the arts and culture of Tokyo.\n\nAction: functions.cities_info_generic\nAction Input: query: \"Tokyo arts and culture\"\n- Tokyo has a vibrant arts and culture scene. It is known for its traditional Japanese plays with venues like the National Noh Theatre and Kabuki-za. Additionally, the New National Theatre Tokyo in Shibuya hosts opera, ballet, contemporary dance, and drama performances.\n- Tokyo is home to numerous theatres including the National Theatre of Japan, the Imperial Theatre, Meiji-za, NHK Hall, Tokyo Metropolitan Theatre, Tokyo Opera City, and Tokyo International Forum.\n- The city offers a diverse array of leisure and entertainment options, featuring major aquariums like Shinagawa Aquarium, Tokyo Sea Life Park, Sunshine Aquarium, and Sumida Aquarium.\n- Tokyo has notable museums like the Tokyo Metropolitan Garden Art Museum in Minato and the Tobacco and Salt Museum in Sumida, which houses extensive collections.\n- The nightlife district of Tokyo is centered around areas like Shibuya, Shinjuku, and Roppongi, known for their bars, clubs, live music venues, and host and hostess clubs.\n- Tokyo is also famous for its festivals such as the SannÅ Matsuri, Sanja Festival, and Kanda Matsuri, featuring elaborately decorated floats and parades.\n\nFinal Answer: Tokyo, the city with the highest population, boasts a rich arts and culture scene with traditional Japanese plays, diverse theatres, museums, aquariums, and lively nightlife districts, along with vibrant festivals."
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select cities_info_model('Tell me about the arts and culture of the city with the highest population');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "24230b36-c168-473b-aa85-ad13c46346d1",
+                    "metadata": {},
+                    "source": "In the above query, the model generates a SQL query to find the city with the most populous city and invokes the `langdb_raw_query` tool to execute the generated query. It uses the result from the query, i.e. Tokyo, and invokes the `cities_info_generic` tool to get more information about the arts and culture of the city."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 27,
+                    "id": "3f1320f6-3a2a-4781-bdf3-e783346d3069",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": "The \"cities\" table in the database has the following schema:\n- id: UUID\n- city: String\n- lat: Decimal(18, 3)\n- lng: Decimal(18, 3)\n- country: String\n- population: UInt64\n\nThis schema includes information about cities such as city name, latitude, longitude, country, and population. Now, I can proceed to find the population of the city that conducted the 1964 Summer Olympics. Let's retrieve this information.Question: Whats the population of the city which conducted the 1964 Summer Olympics\nThought: I need to understand the semantics of the data structure available in the database.\nAction: Execute a raw SQL query to retrieve the population of Tokyo city.\nObservation: The population of Tokyo city is 37,732,000.\nThought: I think I have enough information to answer the question. Based on the data retrieved, I can now answer the question.\nFinal Answer: The population of Tokyo, the city that conducted the 1964 Summer Olympics, is 37,732,000."
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select cities_info_model('Whats the population of the city which conducted the 1964 Summer Olympics');"
+                }
+            ],
+            "metadata": {
+                "kernelspec": {
+                    "display_name": "langdb",
+                    "language": "sql",
+                    "name": "langdb"
+                },
+                "language_info": {
+                    "codemirror_mode": "sql",
+                    "file_extension": ".sql",
+                    "mimetype": "text/x-sql",
+                    "name": "sql"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 5
+        },
+        "last_modified": "2024-07-03T14:23:52+07:00",
+        "created_at": "2024-07-03T14:23:52+07:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/RAG%20Creation%20using%20Postgres.ipynb",
+        "tags": [
+            "RAG",
+            "Getting Started"
+        ]
+    },
+    {
+        "title": "Sentiment Analysis Part 2",
+        "content": {
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "id": "7e549dc8-f6fb-4e4b-a65c-4b3b8898dddf",
+                    "metadata": {},
+                    "source": "# Sentiment Analysis using LangDB and LLMs - Part 2\n\nThis is a  continuation to the post [here](https://langdb.ai/docs/getting_started/sentiment-1/). As discussed in the previous section, we will implement another approach in this example. \n\n**Approach**\n- Send batch of 10 rows at a time leveraging `pretty_print()` function.\n- Instruct LLM to lag out specific extreme reviews that deviate too much for a product in a response.\n- Create an `Agent` for accessing reviews based on id.\n"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 2,
+                    "id": "9668350a-0295-45b0-9e88-67a0afeaad12",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "-- Insert 100 records into products table\nINSERT INTO products (product_id, product_name) \nSELECT number + 1, concat('Product ', toString(number + 1))\nFROM numbers(100);"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 10,
+                    "id": "78c90281-34e5-4193-8d81-d6b0d5c247e3",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "-- Insert randomised records into customer_reviews table with realistic review texts and anomalies\nINSERT INTO customer_reviews (review_id, product_id, customer_id, review_date, review_text, rating, location)\nSELECT \n    number + 1,\n    rand() % 100 + 1,  -- Random product_id between 1 and 100\n    rand() % 1000 + 1, -- Random customer_id between 1 and 1000\n    today() - (rand() % 365), -- Random review_date within the last year\n    [\n        'This product exceeded my expectations. It is very reliable and works as described.',\n        'I am not satisfied with this product. It broke within a week of purchase.',\n        'Great value for money. I would recommend this to my friends and family.',\n        'Terrible product. I had a very bad experience and would not buy again.',\n        'The quality of this product is excellent. Very happy with my purchase.',\n        'Not worth the price. There are better options available in the market.',\n        'This product is just okay. It works but there are some issues.',\n        'I love this product! It has made my life so much easier.',\n        'The customer service was great, but the product did not meet my expectations.',\n        'Good product but delivery was delayed.',\n        -- Add anomalies\n        'This product is amazing! (Anomaly: rating 1)',  -- Anomaly: Positive review with a very low rating\n        'Worst product ever. (Anomaly: rating 5)',       -- Anomaly: Negative review with a very high rating\n        'Totally different product received. (Anomaly: non-existent product_id)',  -- Anomaly: product_id > 100\n        'Unbelievably good! Would buy again and again. (Anomaly: extremely high rating)',  -- Anomaly: rating 6\n        'I will never buy this product again. (Anomaly: negative review with positive sentiment)',  -- Anomaly: Conflicting sentiment\n        'The product arrived broken. (Anomaly: low rating but positive sentiment)'  -- Anomaly: Conflicting sentiment\n    ][rand() % 15 + 1] AS review_text,  -- Select a random review text\n    [1, 5, 4, 1, 5, 2, 3, 5, 3, 4, 1, 5, 1, 5, 6, 4, 2][rand() % 15 + 1] AS rating,  -- Introduce some anomalies in ratings\n    [\n        'New York, NY', 'Los Angeles, CA', 'Chicago, IL', 'Houston, TX', 'Phoenix, AZ', \n        'Philadelphia, PA', 'San Antonio, TX', 'San Diego, CA', 'Dallas, TX', 'San Jose, CA',\n        'Miami, FL', 'Seattle, WA', 'Denver, CO', 'Boston, MA', 'Atlanta, GA',\n        'Las Vegas, NV', 'Austin, TX', 'San Francisco, CA', 'Charlotte, NC', 'Detroit, MI'\n    ][rand() % 15 + 1] AS location  -- Random location\nFROM numbers(1000);"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 11,
+                    "id": "1e8d99db-b250-4bbc-8d6f-a29057075052",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>count()</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>1000</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select count(*) from customer_reviews;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 12,
+                    "id": "b7552c39-d0f4-4274-aff1-d1b8a31d83a5",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>review_id</th>\n      <th>product_id</th>\n      <th>customer_id</th>\n      <th>review_date</th>\n      <th>review_text</th>\n      <th>rating</th>\n      <th>location</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>1</td>\n      <td>69</td>\n      <td>869</td>\n      <td>2023-07-06</td>\n      <td>The customer service was great, but the product did not meet my expectations.</td>\n      <td>3</td>\n      <td>Dallas, TX</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>2</td>\n      <td>78</td>\n      <td>78</td>\n      <td>2023-06-02</td>\n      <td>Totally different product received. (Anomaly: non-existent product_id)</td>\n      <td>1</td>\n      <td>Denver, CO</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>3</td>\n      <td>80</td>\n      <td>680</td>\n      <td>2024-01-21</td>\n      <td>Good product but delivery was delayed.</td>\n      <td>4</td>\n      <td>San Jose, CA</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>4</td>\n      <td>84</td>\n      <td>984</td>\n      <td>2024-05-01</td>\n      <td>Terrible product. I had a very bad experience and would not buy again.</td>\n      <td>1</td>\n      <td>Houston, TX</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>5</td>\n      <td>50</td>\n      <td>350</td>\n      <td>2023-11-12</td>\n      <td>The quality of this product is excellent. Very happy with my purchase.</td>\n      <td>5</td>\n      <td>Phoenix, AZ</td>\n    </tr>\n    <tr>\n      <th>5</th>\n      <td>6</td>\n      <td>19</td>\n      <td>319</td>\n      <td>2023-12-03</td>\n      <td>The customer service was great, but the product did not meet my expectations.</td>\n      <td>3</td>\n      <td>Dallas, TX</td>\n    </tr>\n    <tr>\n      <th>6</th>\n      <td>7</td>\n      <td>80</td>\n      <td>80</td>\n      <td>2023-09-23</td>\n      <td>Good product but delivery was delayed.</td>\n      <td>4</td>\n      <td>San Jose, CA</td>\n    </tr>\n    <tr>\n      <th>7</th>\n      <td>8</td>\n      <td>47</td>\n      <td>847</td>\n      <td>2024-02-18</td>\n      <td>Worst product ever. (Anomaly: rating 5)</td>\n      <td>5</td>\n      <td>Seattle, WA</td>\n    </tr>\n    <tr>\n      <th>8</th>\n      <td>9</td>\n      <td>58</td>\n      <td>458</td>\n      <td>2023-09-30</td>\n      <td>I love this product! It has made my life so much easier.</td>\n      <td>5</td>\n      <td>San Diego, CA</td>\n    </tr>\n    <tr>\n      <th>9</th>\n      <td>10</td>\n      <td>21</td>\n      <td>421</td>\n      <td>2023-09-12</td>\n      <td>Not worth the price. There are better options available in the market.</td>\n      <td>2</td>\n      <td>Philadelphia, PA</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from customer_reviews limit 10"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "ebf9d2eb-0485-474c-9c6a-0d331beabced",
+                    "metadata": {},
+                    "source": "> Hint: You can use `pretty_print()` function to turn any table into YAML that can be fed into LLMs as context"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 17,
+                    "id": "7c840033-0afd-4a66-8b19-17ab8d38f9af",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>content</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>| review_id | product_id | customer_id | review_date | review_text                                                                   | rating | location         |\\n|-----------|------------|-------------|-------------|-------------------------------------------------------------------------------|--------|------------------|\\n| 1         | 69         | 869         | 2023-07-06  | The customer service was great, but the product did not meet my expectations. | 3      | Dallas, TX       |\\n| 2         | 78         | 78          | 2023-06-02  | Totally different product received. (Anomaly: non-existent product_id)        | 1      | Denver, CO       |\\n| 3         | 80         | 680         | 2024-01-21  | Good product but delivery was delayed.                                        | 4      | San Jose, CA     |\\n| 4         | 84         | 984         | 2024-05-01  | Terrible product. I had a very bad experience and would not buy again.        | 1      | Houston, TX      |\\n| 5         | 50         | 350         | 2023-11-12  | The quality of this product is excellent. Very happy with my purchase.        | 5      | Phoenix, AZ      |\\n| 6         | 19         | 319         | 2023-12-03  | The customer service was great, but the product did not meet my expectations. | 3      | Dallas, TX       |\\n| 7         | 80         | 80          | 2023-09-23  | Good product but delivery was delayed.                                        | 4      | San Jose, CA     |\\n| 8         | 47         | 847         | 2024-02-18  | Worst product ever. (Anomaly: rating 5)                                       | 5      | Seattle, WA      |\\n| 9         | 58         | 458         | 2023-09-30  | I love this product! It has made my life so much easier.                      | 5      | San Diego, CA    |\\n| 10        | 21         | 421         | 2023-09-12  | Not worth the price. There are better options available in the market.        | 2      | Philadelphia, PA |</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from pretty_print((select * from customer_reviews limit 10))"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "0fb68f5b",
+                    "metadata": {
+                        "jp-MarkdownHeadingCollapsed": true
+                    },
+                    "source": "### Using Provider\n\nWe will be reusing the `open_ai_provider` we created in [`Using Providers`](Using%20Providers.ipynb).\n\nIf you haven't created one yet, create one with the following command:"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "c54dcca2",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "f0e7da3c-9068-4668-8d19-58c20c3b6117",
+                    "metadata": {},
+                    "source": "## Creating Prompt and Model\nLets create a new model similar to review but that analyses 10 reviews at a time but also looks at exceptions and flag them."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 33,
+                    "id": "1e14ec7f-a07c-44c4-95ec-ce57f298fd1d",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE PROMPT customer_review_pt_detailed (\n  system 'You are an AI assistant. Look at the provided set of reviews in a markdown format and return average sentiment score ranging from 1 to 10 for each review in each line. \n    If you notice that provided rating is signifcantly different than calculated sentiment, mark anomaly as true. \n    Output should strictly be one single JSON array without any additional tags like below. Strictly return Response will be directly fed to a json parser. \n    ```\n    [{ \"review_id\": review_id, \"sentiment\": sentiment, \"anomaly\": anomaly }]\n    ```\n    ',\n  human '{{reviews}}'\n);"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 34,
+                    "id": "aa1f3fdf-cf17-4906-836d-1ba5cc5d919c",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE MODEL review_detailed(\n    reviews\n) USING open_ai_provider()\nPROMPT customer_review_pt_detailed;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 40,
+                    "id": "bebeffa7-5ea4-4d1c-841d-ccfb6c2bf37a",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE calculated_review_jsons ( \n    batch_id UInt32,\n    response String,\n)\nEngine = MergeTree\nOrder By response"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "5447f33d-d759-48dc-9c4a-bce84e7cb8bc",
+                    "metadata": {},
+                    "source": "### Batch & Scheduling\nLets run a batch request with a `batch_id` parameter. We can leverage `SPAWN TASK command` to run things in background or use external scheduling tools to execute these queries in a batch. "
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 42,
+                    "id": "e82785a0-0f22-4e3e-958e-dba4d13f481a",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "INSERT INTO calculated_review_jsons\nSELECT 1 as batch_id, review_detailed(\n    (select content from pretty_print((select * from customer_reviews limit 10)) limit 1)\n) "
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 43,
+                    "id": "6c2503c0-a97a-46a8-ac99-8c8cc7acb33d",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "INSERT INTO calculated_review_jsons\nSELECT 2 as batch_id, review_detailed(\n    (select content from pretty_print((select * from customer_reviews offset 10limit 10)) limit 1)\n) "
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 45,
+                    "id": "e788a76f-6f13-473d-a5f5-a0f2fb19f8a1",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>batch_id</th>\n      <th>response</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>1</td>\n      <td>[\\n    { \"review_id\": 1, \"sentiment\": 4, \"anomaly\": false },\\n    { \"review_id\": 2, \"sentiment\": 1, \"anomaly\": false },\\n    { \"review_id\": 3, \"sentiment\": 7, \"anomaly\": false },\\n    { \"review_id\": 4, \"sentiment\": 2, \"anomaly\": false },\\n    { \"review_id\": 5, \"sentiment\": 8, \"anomaly\": false },\\n    { \"review_id\": 6, \"sentiment\": 4, \"anomaly\": false },\\n    { \"review_id\": 7, \"sentiment\": 7, \"anomaly\": false },\\n    { \"review_id\": 8, \"sentiment\": 2, \"anomaly\": true },\\n    { \"review_id\": 9, \"sentiment\": 8, \"anomaly\": false },\\n    { \"review_id\": 10, \"sentiment\": 2, \"anomaly\": false }\\n]</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>2</td>\n      <td>[\\n    {\"review_id\": 11, \"sentiment\": 4, \"anomaly\": false},\\n    {\"review_id\": 12, \"sentiment\": 2, \"anomaly\": true},\\n    {\"review_id\": 13, \"sentiment\": 9, \"anomaly\": true},\\n    {\"review_id\": 14, \"sentiment\": 2, \"anomaly\": true},\\n    {\"review_id\": 15, \"sentiment\": 8, \"anomaly\": false},\\n    {\"review_id\": 16, \"sentiment\": 8, \"anomaly\": true},\\n    {\"review_id\": 17, \"sentiment\": 4, \"anomaly\": false},\\n    {\"review_id\": 18, \"sentiment\": 3, \"anomaly\": false},\\n    {\"review_id\": 19, \"sentiment\": 5, \"anomaly\": false},\\n    {\"review_id\": 20, \"sentiment\": 9, \"anomaly\": true}\\n]</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from calculated_review_jsons limit 2"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "c93c713b-87d9-478f-bf94-325c41c3a373",
+                    "metadata": {},
+                    "source": "### Calculating avg sentiment based on LLM response"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 56,
+                    "id": "b61584ac-ff16-413d-93bc-0a68fc643f10",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>cr.review_id</th>\n      <th>p.product_id</th>\n      <th>product_name</th>\n      <th>avg(sentiment)</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>10</td>\n      <td>21</td>\n      <td>Product 21</td>\n      <td>2</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>5</td>\n      <td>50</td>\n      <td>Product 50</td>\n      <td>8</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>17</td>\n      <td>2</td>\n      <td>Product B</td>\n      <td>4</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select cr.review_id, p.product_id, p.product_name, avg(sentiment)\nFROM customer_reviews as cr \nJOIN products as p on p.product_id = cr.product_id\nJOIN (\n    SELECT\n        JSONExtractInt(element, 'sentiment') AS sentiment,\n        JSONExtractBool(element, 'anomaly') AS anomaly,\n        JSONExtractInt(element, 'review_id') AS review_id\n    FROM\n    (\n        SELECT batch_id, arrayJoin(JSONExtractArrayRaw(response)) AS element\n        FROM calculated_review_jsons as crj \n    ) \n) crj on crj.review_id = cr.review_id\ngroup by cr.review_id, p.product_id, p.product_name\nlimit 3"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "d79154f7-9c5f-4a75-adcd-91e7c31ee703",
+                    "metadata": {},
+                    "source": "Using the above query lets create an `agent` that returns avg sentiment based on a product id"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 65,
+                    "id": "95f9b196-dd2d-4aa5-aced-10d6e9745aa7",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE AGENT product_sentiment (product_id Int) AS \nSELECT cr.review_id as review_id, p.product_id as product_id, p.product_name as product_name, avg(sentiment) as avg_sentiment\nFROM customer_reviews as cr \nJOIN products as p on p.product_id = cr.product_id\nJOIN (\n    SELECT\n        JSONExtractInt(element, 'sentiment') AS sentiment,\n        JSONExtractBool(element, 'anomaly') AS anomaly,\n        JSONExtractInt(element, 'review_id') AS review_id\n    FROM\n    (\n        SELECT batch_id, arrayJoin(JSONExtractArrayRaw(response)) AS element\n        FROM calculated_review_jsons as crj \n    ) \n) crj on crj.review_id = cr.review_id\nWHERE p.product_id = $product_id\ngroup by cr.review_id, p.product_id, p.product_name"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 67,
+                    "id": "9ec595e0-24ac-4ce9-8b4e-2e97f5ef3905",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>review_id</th>\n      <th>product_id</th>\n      <th>product_name</th>\n      <th>avg_sentiment</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>10</td>\n      <td>21</td>\n      <td>Product 21</td>\n      <td>2</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from product_sentiment(21)"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "2016615f-e4b2-4e29-9b70-e6283f4f3e25",
+                    "metadata": {},
+                    "source": "As this response is purely a SQL query, it can immediately integrate with your existing data or BI environments. "
+                }
+            ],
+            "metadata": {
+                "kernelspec": {
+                    "display_name": "langdb",
+                    "language": "sql",
+                    "name": "langdb"
+                },
+                "language_info": {
+                    "codemirror_mode": "sql",
+                    "file_extension": ".sql",
+                    "mimetype": "text/x-sql",
+                    "name": "sql"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 5
+        },
+        "last_modified": "2024-07-03T14:23:52+07:00",
+        "created_at": "2024-07-03T14:23:52+07:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Sentiment%20Analysis%20Part%202.ipynb",
+        "tags": [
+            "Agent",
+            "Getting Started"
+        ]
+    },
+    {
+        "title": "Sentiment Analysis Part 1",
+        "content": {
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "id": "95c8f8bd-907f-41d2-abe9-396402b86712",
+                    "metadata": {},
+                    "source": "# Sentiment Analysis using LLMs - Part 1\n\nThis example provides a very quick overview of LangDB functionality."
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "7f96c55a-03c1-4d52-9a72-e7fabf71622e",
+                    "metadata": {},
+                    "source": "## Step 1: Prepping the tables\n- Create products data\n- Create customer_reviews data"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 1,
+                    "id": "22a71707-8a92-4e7f-8ed1-a66b51dbbae8",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE products (\n    product_id UInt32,\n    product_name String\n) ENGINE = MergeTree\nORDER BY product_id;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 2,
+                    "id": "06eab2f3-fc56-4bda-8645-969d28fb209d",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE customer_reviews (\n    review_id UInt32,\n    product_id UInt32,\n    customer_id UInt32,\n    review_date Date,\n    review_text String,\n    rating UInt8,\n    location String\n) ENGINE = MergeTree\nORDER BY review_id;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 3,
+                    "id": "b6709838-8068-4f75-9751-0351a3dd6e34",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "INSERT INTO products (product_id, product_name) VALUES \n(1, 'Product A'),\n(2, 'Product B'),\n(3, 'Product C');"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 4,
+                    "id": "de5038ad-250c-413d-853c-5e7f5f32043f",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "INSERT INTO customer_reviews (product_id, customer_id, review_date, review_text, rating, location) VALUES \n(1, 101, '2024-05-01', 'This product is fantastic! Highly recommend it.', 5, 'New York, NY'),\n(2, 102, '2024-05-02', 'Not worth the money. Poor quality.', 2, 'Los Angeles, CA'),\n(1, 103, '2024-05-03', 'Good value for the price. Satisfied with my purchase.', 4, 'Chicago, IL'),\n(2, 104, '2024-05-04', 'Terrible customer service and the product broke after a week.', 1, 'Houston, TX'),\n(3, 105, '2024-05-05', 'Excellent product! Will buy again.', 5, 'Phoenix, AZ');\n"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 8,
+                    "id": "a08ca912-ff08-4ff3-830c-b5b9defd6761",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>product_id</th>\n      <th>no_reviews</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>3</td>\n      <td>1</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>2</td>\n      <td>2</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>1</td>\n      <td>2</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select product_id, count(product_id) as no_reviews from products as p join customer_reviews as cr on cr.product_id = p.product_id  \ngroup by product_id"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "a5f39f1a-c901-4ce4-9a4d-70f4e0c13f78",
+                    "metadata": {},
+                    "source": "## Step 2: Create Model and Prompt"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 16,
+                    "id": "684fdfad-a102-4ac4-bff2-10732234a6a7",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE PROMPT customer_review_pt (\n  system \"You are an AI assistant. Look at the provided review and return average sentiment score for the review.\n    Strictly only return a number between 1 and 5 as a value without any description.\n    \",\n  human \"{{review}}\"\n);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "89a39233",
+                    "metadata": {
+                        "jp-MarkdownHeadingCollapsed": true
+                    },
+                    "source": "### Using Provider\n\nWe will be reusing the `open_ai_provider` we created in [`Using Providers`](Using%20Providers.ipynb).\n\nIf you haven't created one yet, create one with the following command:"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "41a4944d",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "9902dce5",
+                    "metadata": {},
+                    "source": "### Creating Model"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 17,
+                    "id": "6859d0f7-1725-4b96-ab86-5cb65253ab0c",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE MODEL review(\n    review\n) USING open_ai_provider()\nPROMPT customer_review_pt;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "ed75c900-9eab-4adf-8944-003074d2b36e",
+                    "metadata": {},
+                    "source": "That's all you needed you can run your query as if you would use any function. \n\nLet's run it on one row and test the result"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 22,
+                    "id": "bce011c1-fe7d-4729-8a01-7d34790a1df7",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>product_review</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>5</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select toInt32(review('This product is fantastic! Highly recommend it.', 5, 'New York, NY')) as product_review"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 21,
+                    "id": "c99b8953-5b31-4b60-a0a3-3ecf582eb738",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>p.product_id</th>\n      <th>product_name</th>\n      <th>avg_sentiment_score</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>3</td>\n      <td>Product C</td>\n      <td>5.0</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>1</td>\n      <td>Product A</td>\n      <td>4.5</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>2</td>\n      <td>Product B</td>\n      <td>1.5</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "SELECT \n    p.product_id, \n    p.product_name,  \n    AVG(toInt32(review(cr.review_text))) as avg_sentiment_score\nFROM  \n    customer_reviews cr   \nJOIN \n    products p \nON \n    cr.product_id = p.product_id   \nGROUP BY \n    p.product_id, p.product_name   \nORDER BY \n    avg_sentiment_score DESC;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "6c9cef3b-049b-4779-a31e-bed874dafc9e",
+                    "metadata": {},
+                    "source": "## Why is this a big deal ?\n\nWell you might be thinking sentiment analysis has been around for ages and LLMs can be extremely slow for the purpose. So let's make this an interesting example. So far even though it worked great, we are only passing one row at a time which will translate into many number of API calls and too much slowness.\n\n**New Approach**\n- Send batch of 10 rows at a time leveraging `pretty_print()` function.\n- Store intermediate results and create an `Agent` for accessing averages so LLM can have a history of deviations\n- Instruct LLM to lag out specific extreme reviews that deviate too much for a product in a response.\n- Meanwhile also calculate the review.\n- Lets also generate reasonable sized data to get some interesting insights.\n\nModels will keep getting better in the AI world and LangDB gives you a way to dynamically combine RAG and models in a easy way to create many exciting applications.\n\nAs this post has become already too long, lets continue this in a separate post (Part 2). \n\n"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "64744ed4-5971-4863-b17e-3783c6d6269c",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": ""
+                }
+            ],
+            "metadata": {
+                "kernelspec": {
+                    "display_name": "langdb",
+                    "language": "sql",
+                    "name": "langdb"
+                },
+                "language_info": {
+                    "codemirror_mode": "sql",
+                    "file_extension": ".sql",
+                    "mimetype": "text/x-sql",
+                    "name": "sql"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 5
+        },
+        "last_modified": "2024-07-03T14:23:52+07:00",
+        "created_at": "2024-07-03T14:23:52+07:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Sentiment%20Analysis%20Part%201.ipynb",
+        "tags": [
+            "Agent",
+            "Getting Started"
         ]
     },
     {
@@ -882,6 +1501,22 @@
                 },
                 {
                     "cell_type": "markdown",
+                    "id": "9812f9b3",
+                    "metadata": {
+                        "jp-MarkdownHeadingCollapsed": true
+                    },
+                    "source": "### Using Provider\n\nWe will be reusing the `open_ai_provider` we created in [`Using Providers`](../getting_started/Using%20Providers.ipynb).\n\nIf you haven't created one yet, create one with the following command:"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "c78b6c63",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
+                },
+                {
+                    "cell_type": "markdown",
                     "id": "3df08e2a-3c44-4ce4-96c0-56992cd16eee",
                     "metadata": {},
                     "source": "### Embeddings\nLangDB offers a convenient method to generate embeddings using the custom embedding type model function for development and testing purposes. Additionally, we can use in-built `embed()` function to generate embeddings."
@@ -892,7 +1527,7 @@
                     "id": "a12a9c60",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo', temperature = 0.3, embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100);\n"
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
                 },
                 {
                     "cell_type": "code",
@@ -923,20 +1558,6 @@
                     "metadata": {},
                     "outputs": [],
                     "source": "SPAWN TASK generate_embeddings\n    BEGIN\nINSERT INTO embeddings_fallback_data\nSELECT p.id, custom_embed(question), p.question \nFROM popqa AS p \nLEFT JOIN embeddings_fallback_data AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id\nLIMIT 10\nEND EVERY 5 second;"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "769e065c-9cf4-4e78-814c-782e01d5ad09",
-                    "metadata": {},
-                    "source": "## Provider Creation\nBefore Creating our model, we will create a provider, which will store our engine and make it reusable"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "d86bc75c-a9c5-4eaf-b21a-694ad67b798b",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
                 },
                 {
                     "cell_type": "markdown",
@@ -1131,335 +1752,50 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-21T10:03:29+05:30",
-        "created_at": "2024-05-20T14:19:26+03:00",
-        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/CRAG.ipynb",
+        "last_modified": "2024-07-03T14:23:52+07:00",
+        "created_at": "2024-07-03T14:23:52+07:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/CRAG.ipynb",
         "tags": [
+            "RAG",
             "RAG"
         ]
     },
     {
-        "title": "Sentiment Analysis Part 2",
+        "title": "Combining Insights from Structured and Unstructured Data using Postgres",
         "content": {
             "cells": [
                 {
                     "cell_type": "markdown",
-                    "id": "7e549dc8-f6fb-4e4b-a65c-4b3b8898dddf",
+                    "id": "328cb4cb-509e-4411-8bd4-dadf4edd49c9",
                     "metadata": {},
-                    "source": "# Sentiment Analysis using LangDB and LLMs - Part 2\n\nThis is a  continuation to the post [here](https://langdb.ai/docs/getting_started/sentiment-1/). As discussed in the previous section, we will implement another approach in this example. \n\n**Approach**\n- Send batch of 10 rows at a time leveraging `pretty_print()` function.\n- Instruct LLM to lag out specific extreme reviews that deviate too much for a product in a response.\n- Create an `Agent` for accessing reviews based on id.\n"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 2,
-                    "id": "9668350a-0295-45b0-9e88-67a0afeaad12",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "-- Insert 100 records into products table\nINSERT INTO products (product_id, product_name) \nSELECT number + 1, concat('Product ', toString(number + 1))\nFROM numbers(100);"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 10,
-                    "id": "78c90281-34e5-4193-8d81-d6b0d5c247e3",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "-- Insert randomised records into customer_reviews table with realistic review texts and anomalies\nINSERT INTO customer_reviews (review_id, product_id, customer_id, review_date, review_text, rating, location)\nSELECT \n    number + 1,\n    rand() % 100 + 1,  -- Random product_id between 1 and 100\n    rand() % 1000 + 1, -- Random customer_id between 1 and 1000\n    today() - (rand() % 365), -- Random review_date within the last year\n    [\n        'This product exceeded my expectations. It is very reliable and works as described.',\n        'I am not satisfied with this product. It broke within a week of purchase.',\n        'Great value for money. I would recommend this to my friends and family.',\n        'Terrible product. I had a very bad experience and would not buy again.',\n        'The quality of this product is excellent. Very happy with my purchase.',\n        'Not worth the price. There are better options available in the market.',\n        'This product is just okay. It works but there are some issues.',\n        'I love this product! It has made my life so much easier.',\n        'The customer service was great, but the product did not meet my expectations.',\n        'Good product but delivery was delayed.',\n        -- Add anomalies\n        'This product is amazing! (Anomaly: rating 1)',  -- Anomaly: Positive review with a very low rating\n        'Worst product ever. (Anomaly: rating 5)',       -- Anomaly: Negative review with a very high rating\n        'Totally different product received. (Anomaly: non-existent product_id)',  -- Anomaly: product_id > 100\n        'Unbelievably good! Would buy again and again. (Anomaly: extremely high rating)',  -- Anomaly: rating 6\n        'I will never buy this product again. (Anomaly: negative review with positive sentiment)',  -- Anomaly: Conflicting sentiment\n        'The product arrived broken. (Anomaly: low rating but positive sentiment)'  -- Anomaly: Conflicting sentiment\n    ][rand() % 15 + 1] AS review_text,  -- Select a random review text\n    [1, 5, 4, 1, 5, 2, 3, 5, 3, 4, 1, 5, 1, 5, 6, 4, 2][rand() % 15 + 1] AS rating,  -- Introduce some anomalies in ratings\n    [\n        'New York, NY', 'Los Angeles, CA', 'Chicago, IL', 'Houston, TX', 'Phoenix, AZ', \n        'Philadelphia, PA', 'San Antonio, TX', 'San Diego, CA', 'Dallas, TX', 'San Jose, CA',\n        'Miami, FL', 'Seattle, WA', 'Denver, CO', 'Boston, MA', 'Atlanta, GA',\n        'Las Vegas, NV', 'Austin, TX', 'San Francisco, CA', 'Charlotte, NC', 'Detroit, MI'\n    ][rand() % 15 + 1] AS location  -- Random location\nFROM numbers(1000);"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 11,
-                    "id": "1e8d99db-b250-4bbc-8d6f-a29057075052",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>count()</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>1000</td>\n    </tr>\n  </tbody>\n</table>"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "select count(*) from customer_reviews;"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 12,
-                    "id": "b7552c39-d0f4-4274-aff1-d1b8a31d83a5",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>review_id</th>\n      <th>product_id</th>\n      <th>customer_id</th>\n      <th>review_date</th>\n      <th>review_text</th>\n      <th>rating</th>\n      <th>location</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>1</td>\n      <td>69</td>\n      <td>869</td>\n      <td>2023-07-06</td>\n      <td>The customer service was great, but the product did not meet my expectations.</td>\n      <td>3</td>\n      <td>Dallas, TX</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>2</td>\n      <td>78</td>\n      <td>78</td>\n      <td>2023-06-02</td>\n      <td>Totally different product received. (Anomaly: non-existent product_id)</td>\n      <td>1</td>\n      <td>Denver, CO</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>3</td>\n      <td>80</td>\n      <td>680</td>\n      <td>2024-01-21</td>\n      <td>Good product but delivery was delayed.</td>\n      <td>4</td>\n      <td>San Jose, CA</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>4</td>\n      <td>84</td>\n      <td>984</td>\n      <td>2024-05-01</td>\n      <td>Terrible product. I had a very bad experience and would not buy again.</td>\n      <td>1</td>\n      <td>Houston, TX</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>5</td>\n      <td>50</td>\n      <td>350</td>\n      <td>2023-11-12</td>\n      <td>The quality of this product is excellent. Very happy with my purchase.</td>\n      <td>5</td>\n      <td>Phoenix, AZ</td>\n    </tr>\n    <tr>\n      <th>5</th>\n      <td>6</td>\n      <td>19</td>\n      <td>319</td>\n      <td>2023-12-03</td>\n      <td>The customer service was great, but the product did not meet my expectations.</td>\n      <td>3</td>\n      <td>Dallas, TX</td>\n    </tr>\n    <tr>\n      <th>6</th>\n      <td>7</td>\n      <td>80</td>\n      <td>80</td>\n      <td>2023-09-23</td>\n      <td>Good product but delivery was delayed.</td>\n      <td>4</td>\n      <td>San Jose, CA</td>\n    </tr>\n    <tr>\n      <th>7</th>\n      <td>8</td>\n      <td>47</td>\n      <td>847</td>\n      <td>2024-02-18</td>\n      <td>Worst product ever. (Anomaly: rating 5)</td>\n      <td>5</td>\n      <td>Seattle, WA</td>\n    </tr>\n    <tr>\n      <th>8</th>\n      <td>9</td>\n      <td>58</td>\n      <td>458</td>\n      <td>2023-09-30</td>\n      <td>I love this product! It has made my life so much easier.</td>\n      <td>5</td>\n      <td>San Diego, CA</td>\n    </tr>\n    <tr>\n      <th>9</th>\n      <td>10</td>\n      <td>21</td>\n      <td>421</td>\n      <td>2023-09-12</td>\n      <td>Not worth the price. There are better options available in the market.</td>\n      <td>2</td>\n      <td>Philadelphia, PA</td>\n    </tr>\n  </tbody>\n</table>"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "select * from customer_reviews limit 10"
+                    "source": "# Combining Structured and Unstructured Data\nWe will recreate an example use case from [LlamaIndex](https://docs.llamaindex.ai/en/stable/examples/query_engine/SQLJoinQueryEngine/).\nIn this example, we will create a model that will combine insights from structured data (SQL tables) and unstructured data (Wikipedia articles) to answer user queries. "
                 },
                 {
                     "cell_type": "markdown",
-                    "id": "ebf9d2eb-0485-474c-9c6a-0d331beabced",
-                    "metadata": {},
-                    "source": "> Hint: You can use `pretty_print()` function to turn any table into YAML that can be fed into LLMs as context"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 17,
-                    "id": "7c840033-0afd-4a66-8b19-17ab8d38f9af",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>content</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>| review_id | product_id | customer_id | review_date | review_text                                                                   | rating | location         |\\n|-----------|------------|-------------|-------------|-------------------------------------------------------------------------------|--------|------------------|\\n| 1         | 69         | 869         | 2023-07-06  | The customer service was great, but the product did not meet my expectations. | 3      | Dallas, TX       |\\n| 2         | 78         | 78          | 2023-06-02  | Totally different product received. (Anomaly: non-existent product_id)        | 1      | Denver, CO       |\\n| 3         | 80         | 680         | 2024-01-21  | Good product but delivery was delayed.                                        | 4      | San Jose, CA     |\\n| 4         | 84         | 984         | 2024-05-01  | Terrible product. I had a very bad experience and would not buy again.        | 1      | Houston, TX      |\\n| 5         | 50         | 350         | 2023-11-12  | The quality of this product is excellent. Very happy with my purchase.        | 5      | Phoenix, AZ      |\\n| 6         | 19         | 319         | 2023-12-03  | The customer service was great, but the product did not meet my expectations. | 3      | Dallas, TX       |\\n| 7         | 80         | 80          | 2023-09-23  | Good product but delivery was delayed.                                        | 4      | San Jose, CA     |\\n| 8         | 47         | 847         | 2024-02-18  | Worst product ever. (Anomaly: rating 5)                                       | 5      | Seattle, WA      |\\n| 9         | 58         | 458         | 2023-09-30  | I love this product! It has made my life so much easier.                      | 5      | San Diego, CA    |\\n| 10        | 21         | 421         | 2023-09-12  | Not worth the price. There are better options available in the market.        | 2      | Philadelphia, PA |</td>\n    </tr>\n  </tbody>\n</table>"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "select * from pretty_print((select * from customer_reviews limit 10))"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "f0e7da3c-9068-4668-8d19-58c20c3b6117",
-                    "metadata": {},
-                    "source": "Lets create a new model similar to review but that analyses 10 reviews at a time but also looks at exceptions and flag them."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 33,
-                    "id": "1e14ec7f-a07c-44c4-95ec-ce57f298fd1d",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE PROMPT customer_review_pt_detailed (\n  system 'You are an AI assistant. Look at the provided set of reviews in a markdown format and return average sentiment score ranging from 1 to 10 for each review in each line. \n    If you notice that provided rating is signifcantly different than calculated sentiment, mark anomaly as true. \n    Output should strictly be one single JSON array without any additional tags like below. Strictly return Response will be directly fed to a json parser. \n    ```\n    [{ \"review_id\": review_id, \"sentiment\": sentiment, \"anomaly\": anomaly }]\n    ```\n    ',\n  human '{{reviews}}'\n);"
+                    "id": "79a79bad-184c-4a98-bf42-4ecf5149d7c8",
+                    "metadata": {
+                        "jp-MarkdownHeadingCollapsed": true
+                    },
+                    "source": "### Schema Creation and Loading Data in PostgreSQL\nWe first create a cities table which contains information about different cities regarding their geographic location, population, and the country in which they are located.\n\nYou can run the following code to create the table and insert some sample data or use the credentials in the following code.:"
                 },
                 {
                     "cell_type": "code",
                     "execution_count": null,
-                    "id": "1f4f88c2-c86f-412f-b870-866479580a20",
+                    "id": "55f46dd6",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 34,
-                    "id": "aa1f3fdf-cf17-4906-836d-1ba5cc5d919c",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE MODEL review_detailed(\n    reviews\n) USING open_ai_provider\nPROMPT customer_review_pt_detailed;"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 40,
-                    "id": "bebeffa7-5ea4-4d1c-841d-ccfb6c2bf37a",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE TABLE calculated_review_jsons ( \n    batch_id UInt32,\n    response String,\n)\nEngine = MergeTree\nOrder By response"
+                    "source": "CREATE TABLE cities (\n    id UUID DEFAULT gen_random_uuid(),\n    city VARCHAR(255),\n    lat DECIMAL(10, 3),\n    lng DECIMAL(10, 3),\n    country VARCHAR(255),\n    population BIGINT\n);\n\nINSERT INTO cities(city, lat, lng, country, population) VALUES\n    ('Tokyo','35.6897','139.6922','Japan','37732000'),\n    ('Jakarta','-6.1750','106.8275','Indonesia','33756000'),\n    ('Delhi','28.6100','77.2300','India','32226000'),\n    ('Manila','14.5958','120.9772','Philippines','24922000'),\n    ('Dhaka','23.7639','90.3889','Bangladesh','18627000'),\n    ('Beijing','39.9067','116.3975','China','18522000'),\n    ('Moscow','55.7558','37.6172','Russia','17332000'),\n    ('Karachi','24.8600','67.0100','Pakistan','15738000'),\n    ('Ho Chi Minh City','10.7756','106.7019','Vietnam','15136000'),\n    ('Singapore','1.3000','103.8000','Singapore','5983000'),\n    ('Tashkent','41.3111','69.2797','Uzbekistan','2956384'),\n    ('Phnom Penh','11.5694','104.9211','Cambodia','2129371'),\n    ('Bishkek','42.8747','74.6122','Kyrgyzstan','1120827'),\n    ('Tbilisi','41.7225','44.7925','Georgia','1118035'),\n    ('Sri Jayewardenepura Kotte','6.9108','79.8878','Sri Lanka','115826');\n\n\n\nCREATE TABLE pdf_links (\n    city VARCHAR(255),\n    link VARCHAR(255)\n);\n\n\nINSERT INTO pdf_links(city, link) VALUES\n    ('Beijing','https://en.wikipedia.org/api/rest_v1/page/pdf/Beijing'),\n    ('Tokyo','https://en.wikipedia.org/api/rest_v1/page/pdf/Tokyo'),\n    ('Jakarta','https://en.wikipedia.org/api/rest_v1/page/pdf/Jakarta'),\n    ('Delhi','https://en.wikipedia.org/api/rest_v1/page/pdf/New_Delhi'),\n    ('Manila','https://en.wikipedia.org/api/rest_v1/page/pdf/Manila'),\n    ('Dhaka','https://en.wikipedia.org/api/rest_v1/page/pdf/Dhaka'),\n    ('Moscow','https://en.wikipedia.org/api/rest_v1/page/pdf/Moscow'),\n    ('Karachi','https://en.wikipedia.org/api/rest_v1/page/pdf/Karachi'),\n    ('Singapore','https://en.wikipedia.org/api/rest_v1/page/pdf/Singapore'),\n    ('Tashkent','https://en.wikipedia.org/api/rest_v1/page/pdf/Tashkent'),\n    ('Phnom Penh','https://en.wikipedia.org/api/rest_v1/page/pdf/Phnom_Penh'),\n    ('Bishkek','https://en.wikipedia.org/api/rest_v1/page/pdf/Bishkek'),\n    ('Tbilisi','https://en.wikipedia.org/api/rest_v1/page/pdf/Tbilisi'),\n    ('Sri Jayewardenepura Kotte','https://en.wikipedia.org/api/rest_v1/page/pdf/Sri_Jayawardenepura_Kotte'),\n    ('Ho Chi Minh City','https://en.wikipedia.org/api/rest_v1/page/pdf/Ho_Chi_Minh_City');"
                 },
                 {
                     "cell_type": "markdown",
-                    "id": "5447f33d-d759-48dc-9c4a-bce84e7cb8bc",
+                    "id": "a112e713",
                     "metadata": {},
-                    "source": "### Batch & Scheduling\nLets run a batch request with a `batch_id` parameter. We can leverage `SPAWN TASK command` to run things in background or use external scheduling tools to execute these queries in a batch. "
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 42,
-                    "id": "e82785a0-0f22-4e3e-958e-dba4d13f481a",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "INSERT INTO calculated_review_jsons\nSELECT 1 as batch_id, review_detailed(\n    (select content from pretty_print((select * from customer_reviews limit 10)) limit 1)\n) "
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 43,
-                    "id": "6c2503c0-a97a-46a8-ac99-8c8cc7acb33d",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "INSERT INTO calculated_review_jsons\nSELECT 2 as batch_id, review_detailed(\n    (select content from pretty_print((select * from customer_reviews offset 10limit 10)) limit 1)\n) "
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 45,
-                    "id": "e788a76f-6f13-473d-a5f5-a0f2fb19f8a1",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>batch_id</th>\n      <th>response</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>1</td>\n      <td>[\\n    { \"review_id\": 1, \"sentiment\": 4, \"anomaly\": false },\\n    { \"review_id\": 2, \"sentiment\": 1, \"anomaly\": false },\\n    { \"review_id\": 3, \"sentiment\": 7, \"anomaly\": false },\\n    { \"review_id\": 4, \"sentiment\": 2, \"anomaly\": false },\\n    { \"review_id\": 5, \"sentiment\": 8, \"anomaly\": false },\\n    { \"review_id\": 6, \"sentiment\": 4, \"anomaly\": false },\\n    { \"review_id\": 7, \"sentiment\": 7, \"anomaly\": false },\\n    { \"review_id\": 8, \"sentiment\": 2, \"anomaly\": true },\\n    { \"review_id\": 9, \"sentiment\": 8, \"anomaly\": false },\\n    { \"review_id\": 10, \"sentiment\": 2, \"anomaly\": false }\\n]</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>2</td>\n      <td>[\\n    {\"review_id\": 11, \"sentiment\": 4, \"anomaly\": false},\\n    {\"review_id\": 12, \"sentiment\": 2, \"anomaly\": true},\\n    {\"review_id\": 13, \"sentiment\": 9, \"anomaly\": true},\\n    {\"review_id\": 14, \"sentiment\": 2, \"anomaly\": true},\\n    {\"review_id\": 15, \"sentiment\": 8, \"anomaly\": false},\\n    {\"review_id\": 16, \"sentiment\": 8, \"anomaly\": true},\\n    {\"review_id\": 17, \"sentiment\": 4, \"anomaly\": false},\\n    {\"review_id\": 18, \"sentiment\": 3, \"anomaly\": false},\\n    {\"review_id\": 19, \"sentiment\": 5, \"anomaly\": false},\\n    {\"review_id\": 20, \"sentiment\": 9, \"anomaly\": true}\\n]</td>\n    </tr>\n  </tbody>\n</table>"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "select * from calculated_review_jsons limit 2"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "c93c713b-87d9-478f-bf94-325c41c3a373",
-                    "metadata": {},
-                    "source": "### Calculating avg sentiment based on LLM response"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 56,
-                    "id": "b61584ac-ff16-413d-93bc-0a68fc643f10",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>cr.review_id</th>\n      <th>p.product_id</th>\n      <th>product_name</th>\n      <th>avg(sentiment)</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>10</td>\n      <td>21</td>\n      <td>Product 21</td>\n      <td>2</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>5</td>\n      <td>50</td>\n      <td>Product 50</td>\n      <td>8</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>17</td>\n      <td>2</td>\n      <td>Product B</td>\n      <td>4</td>\n    </tr>\n  </tbody>\n</table>"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "select cr.review_id, p.product_id, p.product_name, avg(sentiment)\nFROM customer_reviews as cr \nJOIN products as p on p.product_id = cr.product_id\nJOIN (\n    SELECT\n        JSONExtractInt(element, 'sentiment') AS sentiment,\n        JSONExtractBool(element, 'anomaly') AS anomaly,\n        JSONExtractInt(element, 'review_id') AS review_id\n    FROM\n    (\n        SELECT batch_id, arrayJoin(JSONExtractArrayRaw(response)) AS element\n        FROM calculated_review_jsons as crj \n    ) \n) crj on crj.review_id = cr.review_id\ngroup by cr.review_id, p.product_id, p.product_name\nlimit 3"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "d79154f7-9c5f-4a75-adcd-91e7c31ee703",
-                    "metadata": {},
-                    "source": "Using the above query lets create an `agent` that returns avg sentiment based on a product id"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 65,
-                    "id": "95f9b196-dd2d-4aa5-aced-10d6e9745aa7",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE AGENT product_sentiment (product_id Int) AS \nSELECT cr.review_id as review_id, p.product_id as product_id, p.product_name as product_name, avg(sentiment) as avg_sentiment\nFROM customer_reviews as cr \nJOIN products as p on p.product_id = cr.product_id\nJOIN (\n    SELECT\n        JSONExtractInt(element, 'sentiment') AS sentiment,\n        JSONExtractBool(element, 'anomaly') AS anomaly,\n        JSONExtractInt(element, 'review_id') AS review_id\n    FROM\n    (\n        SELECT batch_id, arrayJoin(JSONExtractArrayRaw(response)) AS element\n        FROM calculated_review_jsons as crj \n    ) \n) crj on crj.review_id = cr.review_id\nWHERE p.product_id = $product_id\ngroup by cr.review_id, p.product_id, p.product_name"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 67,
-                    "id": "9ec595e0-24ac-4ce9-8b4e-2e97f5ef3905",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>review_id</th>\n      <th>product_id</th>\n      <th>product_name</th>\n      <th>avg_sentiment</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>10</td>\n      <td>21</td>\n      <td>Product 21</td>\n      <td>2</td>\n    </tr>\n  </tbody>\n</table>"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "select * from product_sentiment(21)"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "2016615f-e4b2-4e29-9b70-e6283f4f3e25",
-                    "metadata": {},
-                    "source": "As this response is purely a SQL query, it can immediately integrate with your existing data or BI environments. "
-                }
-            ],
-            "metadata": {
-                "kernelspec": {
-                    "display_name": "langdb",
-                    "language": "sql",
-                    "name": "langdb"
-                },
-                "language_info": {
-                    "codemirror_mode": "sql",
-                    "file_extension": ".sql",
-                    "mimetype": "text/x-sql",
-                    "name": "sql"
-                }
-            },
-            "nbformat": 4,
-            "nbformat_minor": 5
-        },
-        "last_modified": "2024-06-21T10:03:29+05:30",
-        "created_at": "2024-06-13T13:07:10+05:30",
-        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Sentiment%20Analysis%20Part%202.ipynb",
-        "tags": [
-            "Agent"
-        ]
-    },
-    {
-        "title": "Sentiment Analysis Part 1",
-        "content": {
-            "cells": [
-                {
-                    "cell_type": "markdown",
-                    "id": "95c8f8bd-907f-41d2-abe9-396402b86712",
-                    "metadata": {},
-                    "source": "# Sentiment Analysis using LLMs - Part 1\n\nThis example provides a very quick overview of LangDB functionality."
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "7f96c55a-03c1-4d52-9a72-e7fabf71622e",
-                    "metadata": {},
-                    "source": "## Step 1: Prepping the tables\n- Create products data\n- Create customer_reviews data"
+                    "source": "Once the data has been loaded into postgres. We can move over to LangDB.\n## Loading Data in LangDB\n\nYou can replace the credentials in the following code with your own."
                 },
                 {
                     "cell_type": "code",
                     "execution_count": 1,
-                    "id": "22a71707-8a92-4e7f-8ed1-a66b51dbbae8",
+                    "id": "6940163f-1096-4b9d-a6d4-acc5f6fe4076",
                     "metadata": {},
                     "outputs": [
                         {
@@ -1470,12 +1806,12 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE TABLE products (\n    product_id UInt32,\n    product_name String\n) ENGINE = MergeTree\nORDER BY product_id;"
+                    "source": "CREATE TABLE cities (\n\t`id` UUID DEFAULT generateUUIDv4(),\n\t`city` String,\n\t`lat` Decimal64(3),\n\t`lng` Decimal64(3),\n\t`country` String,\n\t`population` UInt64\n) engine = PostgreSQL('aws-0-ap-southeast-1.pooler.supabase.com', 'postgres', 'cities', 'langdb.ballibhxhsacfkzrwgjk', 'langdb');"
                 },
                 {
                     "cell_type": "code",
                     "execution_count": 2,
-                    "id": "06eab2f3-fc56-4bda-8645-969d28fb209d",
+                    "id": "68d69dfd-1194-43d9-a806-431509cbb045",
                     "metadata": {},
                     "outputs": [
                         {
@@ -1486,28 +1822,18 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE TABLE customer_reviews (\n    review_id UInt32,\n    product_id UInt32,\n    customer_id UInt32,\n    review_date Date,\n    review_text String,\n    rating UInt8,\n    location String\n) ENGINE = MergeTree\nORDER BY review_id;"
+                    "source": "CREATE TABLE pdf_links (\n\t`city` String,\n\t`link` String\n) engine = PostgreSQL('aws-0-ap-southeast-1.pooler.supabase.com', 'postgres', 'pdf_links', 'langdb.ballibhxhsacfkzrwgjk', 'langdb');"
                 },
                 {
-                    "cell_type": "code",
-                    "execution_count": 3,
-                    "id": "b6709838-8068-4f75-9751-0351a3dd6e34",
+                    "cell_type": "markdown",
+                    "id": "0b527626-271b-47cf-b9a5-270d44e10934",
                     "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "INSERT INTO products (product_id, product_name) VALUES \n(1, 'Product A'),\n(2, 'Product B'),\n(3, 'Product C');"
+                    "source": "### Loading the PDFs\nWe create a pdfs table to store the PDFs containing information about the cities, obtained from Wikipedia. We extract semantically chunked data from the PDFs using the built-in function load_pdf_text(), and insert it into the tables."
                 },
                 {
                     "cell_type": "code",
                     "execution_count": 4,
-                    "id": "de5038ad-250c-413d-853c-5e7f5f32043f",
+                    "id": "c523ce6a-9f4c-43cd-9f47-e4bda8f97ef1",
                     "metadata": {},
                     "outputs": [
                         {
@@ -1518,58 +1844,50 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "INSERT INTO customer_reviews (product_id, customer_id, review_date, review_text, rating, location) VALUES \n(1, 101, '2024-05-01', 'This product is fantastic! Highly recommend it.', 5, 'New York, NY'),\n(2, 102, '2024-05-02', 'Not worth the money. Poor quality.', 2, 'Los Angeles, CA'),\n(1, 103, '2024-05-03', 'Good value for the price. Satisfied with my purchase.', 4, 'Chicago, IL'),\n(2, 104, '2024-05-04', 'Terrible customer service and the product broke after a week.', 1, 'Houston, TX'),\n(3, 105, '2024-05-05', 'Excellent product! Will buy again.', 5, 'Phoenix, AZ');\n"
+                    "source": "CREATE TABLE pdfs (\n  `id` UUID DEFAULT generateUUIDv4(),\n  `content` String, \n  `metadata` String, \n  `city` String\n) engine = MergeTree\norder by (id, content);"
                 },
                 {
                     "cell_type": "code",
-                    "execution_count": 8,
-                    "id": "a08ca912-ff08-4ff3-830c-b5b9defd6761",
+                    "execution_count": 6,
+                    "id": "d1f1e71b-3e0a-4907-9f60-c0b951959592",
                     "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>product_id</th>\n      <th>no_reviews</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>3</td>\n      <td>1</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>2</td>\n      <td>2</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>1</td>\n      <td>2</td>\n    </tr>\n  </tbody>\n</table>"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "select product_id, count(product_id) as no_reviews from products as p join customer_reviews as cr on cr.product_id = p.product_id  \ngroup by product_id"
+                    "outputs": [],
+                    "source": "INSERT INTO pdfs(content, metadata, city) \nSELECT content, metadata, JSONExtractString(metadata,'city')\nFROM load_pdf_text((SELECT link, city from pdf_links));"
                 },
                 {
                     "cell_type": "markdown",
-                    "id": "a5f39f1a-c901-4ce4-9a4d-70f4e0c13f78",
-                    "metadata": {},
-                    "source": "## Step 2: Create Model and Prompt"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 16,
-                    "id": "684fdfad-a102-4ac4-bff2-10732234a6a7",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE PROMPT customer_review_pt (\n  system \"You are an AI assistant. Look at the provided review and return average sentiment score for the review.\n    Strictly only return a number between 1 and 5 as a value without any description.\n    \",\n  human \"{{review}}\"\n);"
+                    "id": "fdb45e72",
+                    "metadata": {
+                        "jp-MarkdownHeadingCollapsed": true
+                    },
+                    "source": "### Using Provider\n\nWe will be reusing the `open_ai_provider` we created in [`Using Providers`](Using%20Providers.ipynb).\n\nIf you haven't created one yet, create one with the following command:"
                 },
                 {
                     "cell_type": "code",
                     "execution_count": null,
-                    "id": "4f750345-736a-4156-bebb-c956ff1c1417",
+                    "id": "87260340",
                     "metadata": {},
                     "outputs": [],
                     "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
                 },
                 {
+                    "cell_type": "markdown",
+                    "id": "c66fe141-8a03-4231-ba8f-cde076b3980f",
+                    "metadata": {},
+                    "source": "## Embeddings\nLangDB offers a convenient method to generate embeddings using the custom embedding type model function for development and testing purposes. Additionally, we can use in-built `embed()` function to generate embeddings."
+                },
+                {
                     "cell_type": "code",
-                    "execution_count": 17,
-                    "id": "6859d0f7-1725-4b96-ab86-5cb65253ab0c",
+                    "execution_count": null,
+                    "id": "81f1023b",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 22,
+                    "id": "f1341902-dad1-4b4e-9511-227ee039ec50",
                     "metadata": {},
                     "outputs": [
                         {
@@ -1580,59 +1898,181 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL review(\n    review\n) USING open_ai_provider()\nPROMPT customer_review_pt;"
+                    "source": "CREATE TABLE pdf_embeddings (\n  id UUID,\n  embeddings `Array`(`Float32`),\n) \nengine = MergeTree\norder by id;"
                 },
                 {
                     "cell_type": "markdown",
-                    "id": "ed75c900-9eab-4adf-8944-003074d2b36e",
+                    "id": "6c47e390-05cd-4dc8-9379-f14686f60d38",
                     "metadata": {},
-                    "source": "That's all you needed you can run your query as if you would use any function. \n\nLet's run it on one row and test the result"
+                    "source": "While we can use `custom_embed()` to generate embeddings for each chunk and store them, we can also run the whole process in background using `SPAWN TASK` which essentially creates a cron job."
                 },
                 {
                     "cell_type": "code",
-                    "execution_count": 22,
-                    "id": "bce011c1-fe7d-4729-8a01-7d34790a1df7",
+                    "execution_count": 36,
+                    "id": "3d386558-b4cd-477b-b4c8-51aab12261ec",
                     "metadata": {},
                     "outputs": [
                         {
                             "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>product_review</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>5</td>\n    </tr>\n  </tbody>\n</table>"
+                                "text/plain": "Spawned Task: generate_embeddings with id: e7f9e793-181e-490b-b56e-2c70958b0946"
                             },
                             "metadata": {},
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "select toInt32(review('This product is fantastic! Highly recommend it.', 5, 'New York, NY')) as product_review"
+                    "source": "SPAWN TASK generate_embeddings\nBEGIN\n    INSERT INTO pdf_embeddings\n    select p.id, custom_embed(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 5 second\nWITH MAX_POOL_SIZE 5;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "7ee88a0c-96ca-4177-bcc9-b11176e3224f",
+                    "metadata": {},
+                    "source": "## AGENT Creation\nFirst, we create agent which utilize vector search to find relevant chunks. While the cities_info_generic could be utilized to get information about the query."
                 },
                 {
                     "cell_type": "code",
-                    "execution_count": 21,
-                    "id": "c99b8953-5b31-4b60-a0a3-3ecf582eb738",
+                    "execution_count": 24,
+                    "id": "3d554b8a-ad85-4aab-8ef8-8191fd19b30c",
                     "metadata": {},
                     "outputs": [
                         {
                             "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>p.product_id</th>\n      <th>product_name</th>\n      <th>avg_sentiment_score</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>3</td>\n      <td>Product C</td>\n      <td>5.0</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>1</td>\n      <td>Product A</td>\n      <td>4.5</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>2</td>\n      <td>Product B</td>\n      <td>1.5</td>\n    </tr>\n  </tbody>\n</table>"
+                                "text/plain": ""
                             },
                             "metadata": {},
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "SELECT \n    p.product_id, \n    p.product_name,  \n    AVG(toInt32(review(cr.review_text))) as avg_sentiment_score\nFROM  \n    customer_reviews cr   \nJOIN \n    products p \nON \n    cr.product_id = p.product_id   \nGROUP BY \n    p.product_id, p.product_name   \nORDER BY \n    avg_sentiment_score DESC;"
+                    "source": "CREATE AGENT cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(custom_embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'get information about cities';"
                 },
                 {
                     "cell_type": "markdown",
-                    "id": "6c9cef3b-049b-4779-a31e-bed874dafc9e",
+                    "id": "45668de6-c81a-4e8a-b8a9-0b6010f1c1e4",
                     "metadata": {},
-                    "source": "## Why is this a big deal ?\n\nWell you might be thinking sentiment analysis has been around for ages and LLMs can be extremely slow for the purpose. So let's make this an interesting example. So far even though it worked great, we are only passing one row at a time which will translate into many number of API calls and too much slowness.\n\n**New Approach**\n- Send batch of 10 rows at a time leveraging `pretty_print()` function.\n- Store intermediate results and create an `Agent` for accessing averages so LLM can have a history of deviations\n- Instruct LLM to lag out specific extreme reviews that deviate too much for a product in a response.\n- Meanwhile also calculate the review.\n- Lets also generate reasonable sized data to get some interesting insights.\n\nModels will keep getting better in the AI world and LangDB gives you a way to dynamically combine RAG and models in a easy way to create many exciting applications.\n\nAs this post has become already too long, lets continue this in a separate post (Part 2). \n\n"
+                    "source": "### Using Agent\n\nUsing the agent to understand how similarity search works"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 20,
+                    "id": "9203b8c1-ec3c-499d-83c7-5288b076ffef",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>id</th>\n      <th>content</th>\n      <th>cosineDistance</th>\n      <th>city</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>0e6496a7-3048-469a-9b95-430c3b9bd1ea</td>\n      <td>Moscow was the host city of the 1980 Summer Olympics, with the yachting events being held at Tallinn, in present-day\\r\\nEstonia. Large sports facilities and the main international airport, Sheremetyevo Terminal 2, were built in preparation for\\r\\nthe 1980 Summer Olympics. Moscow had made a bid for the 2012 Summer\\r\\nOlympics. However, when final voting commenced on July 6, 2005, Moscow was\\r\\nthe first city to be eliminated from further rounds. The Games were awarded to\\r\\nLondon.\\r\\nThe most titled ice hockey team in the Soviet Union and in the world, HC CSKA\\r\\nMoscow comes from Moscow. Other big ice hockey clubs from Moscow are HC\\r\\nDynamo Moscow, which was the second most titled team in the Soviet Union, and\\r\\nHC Spartak Moscow.\\r\\nThe most titled Soviet, Russian, and one of the most titled Euroleague clubs, is the\\r\\nbasketball club from Moscow PBC CSKA Moscow. Moscow hosted the\\r\\nEuroBasket in 1953 and 1965.\\r\\nMoscow had more winners at the USSR and Russian Chess Championship than any other city.</td>\n      <td>0.167045</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>0e6496a7-3048-469a-9b95-430c3b9bd1ea</td>\n      <td>Moscow was the host city of the 1980 Summer Olympics, with the yachting events being held at Tallinn, in present-day\\r\\nEstonia. Large sports facilities and the main international airport, Sheremetyevo Terminal 2, were built in preparation for\\r\\nthe 1980 Summer Olympics. Moscow had made a bid for the 2012 Summer\\r\\nOlympics. However, when final voting commenced on July 6, 2005, Moscow was\\r\\nthe first city to be eliminated from further rounds. The Games were awarded to\\r\\nLondon.\\r\\nThe most titled ice hockey team in the Soviet Union and in the world, HC CSKA\\r\\nMoscow comes from Moscow. Other big ice hockey clubs from Moscow are HC\\r\\nDynamo Moscow, which was the second most titled team in the Soviet Union, and\\r\\nHC Spartak Moscow.\\r\\nThe most titled Soviet, Russian, and one of the most titled Euroleague clubs, is the\\r\\nbasketball club from Moscow PBC CSKA Moscow. Moscow hosted the\\r\\nEuroBasket in 1953 and 1965.\\r\\nMoscow had more winners at the USSR and Russian Chess Championship than any other city.</td>\n      <td>0.167045</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>ae687a62-73a5-411a-be00-46fedce90931</td>\n      <td>The Bolshoi Theatre\\r\\nThe Luzhniki Stadium hosted the\\r\\n1980 Summer Olympics and the\\r\\n2018 FIFA World Cup Final.\\r\\nSparrow Hills fanzone during 2018\\r\\nFIFA World Cup\\r\\nSC Olimpiyskiy was built for the\\r\\n1980 Summer Olympics.\\r\\nCSKAArena during a game of KHL,\\r\\nconsidered to be the second-best ice\\r\\nhockey league in the world\\r\\nMoscow will get its own branch of the Hermitage Museum in 2024, with authorities having agreed upon the final project, to be executed by Hani Rashid, co\u0002founder of New York-based 'Asymptote Architecture' - the same bureau that's behind the city's stock market building, the Busan-based World Business Center\\r\\nSolomon Tower and the Strata Tower in Abu-Dhabi.\\r\\n[136]\\r\\nMoscow is the heart of the Russian performing arts, including ballet and film, with 68\\r\\nmuseums\\r\\n[137] 103[138] theaters, 132 cinemas and 24 concert halls. Among Moscow's theaters\\r\\nand ballet studios is the Bolshoi Theatre and the Malyi Theatre\\r\\n[139] as well as Vakhtangov\\r\\nTheatre and Moscow Art Theatre.</td>\n      <td>0.167222</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>ae687a62-73a5-411a-be00-46fedce90931</td>\n      <td>The Bolshoi Theatre\\r\\nThe Luzhniki Stadium hosted the\\r\\n1980 Summer Olympics and the\\r\\n2018 FIFA World Cup Final.\\r\\nSparrow Hills fanzone during 2018\\r\\nFIFA World Cup\\r\\nSC Olimpiyskiy was built for the\\r\\n1980 Summer Olympics.\\r\\nCSKAArena during a game of KHL,\\r\\nconsidered to be the second-best ice\\r\\nhockey league in the world\\r\\nMoscow will get its own branch of the Hermitage Museum in 2024, with authorities having agreed upon the final project, to be executed by Hani Rashid, co\u0002founder of New York-based 'Asymptote Architecture' - the same bureau that's behind the city's stock market building, the Busan-based World Business Center\\r\\nSolomon Tower and the Strata Tower in Abu-Dhabi.\\r\\n[136]\\r\\nMoscow is the heart of the Russian performing arts, including ballet and film, with 68\\r\\nmuseums\\r\\n[137] 103[138] theaters, 132 cinemas and 24 concert halls. Among Moscow's theaters\\r\\nand ballet studios is the Bolshoi Theatre and the Malyi Theatre\\r\\n[139] as well as Vakhtangov\\r\\nTheatre and Moscow Art Theatre.</td>\n      <td>0.167222</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>77322727-8eb9-4671-a0ae-c40065bf4bcd</td>\n      <td>The China Central Television\\r\\nHeadquarters building in CBD\\r\\nA scene from the opening\\r\\nceremonies of the 2008 Summer\\r\\nOlympic Games\\r\\nBeijing Workers' Stadium at night as\\r\\nviewed from Sanlitun\\r\\nFamous rock bands and solo artists from Beijing include Cui Jian, Dou Wei, He Yong, Pu Shu, Tang\\r\\nDynasty, Black Panther, The Flowers, 43 Baojia Street, etc.\\r\\n[220]\\r\\nBeijing has hosted numerous international and national sporting events, the most notables was the 2008\\r\\nSummer Olympic and Paralympic Games and the 2022 Winter Olympics and the Paralympics. Other multi\u0002sport international events held in Beijing include the 2001 Summer Universiade and the 1990 Asian Games.\\r\\nSingle-sport international competitions include the Beijing Marathon (annually since 1981), China Open of\\r\\nTennis (1993–97, annually since 2004), ISU Grand Prix of Figure Skating Cup of China (2003, 2004, 2005,\\r\\n2008, 2009 and 2010), World Professional Billiards and Snooker Association China Open for Snooker</td>\n      <td>0.170085</td>\n      <td>Beijing</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "SELECT * from cities_info_generic('Olympics')"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "b1dc2054-453d-4e49-94b5-a4976740b655",
+                    "metadata": {},
+                    "source": "We create another tool, `get_semantics`, which uses the built-in table function `semantics()`, which returns the schemas of all the tables in the database."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 26,
+                    "id": "eb8b7f96-ee30-48da-b6cf-2f087c6aa043",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE AGENT get_semantics() AS \n(SELECT * FROM semantics())\nCOMMENT 'Schemas of all the tables';"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "d899d635-0429-43e5-b5cd-ea31d111f1ea",
+                    "metadata": {},
+                    "source": "## Prompt Creation\nWe create a prompt for our use case based on the ReAct framework."
                 },
                 {
                     "cell_type": "code",
                     "execution_count": null,
-                    "id": "64744ed4-5971-4863-b17e-3783c6d6269c",
+                    "id": "c0877078-ed54-43d2-9daa-0c720ddab3ed",
                     "metadata": {},
                     "outputs": [],
-                    "source": ""
+                    "source": "CREATE PROMPT cities_prompt (\nsystem \"You are a master data agent. Your task is to provide useful information to the user about a city based on the question.\n  Only use information retrieved using the supplied tools.\n  For doing this, first, fetch the schema of the tables in the database using the get_semantics tool. Understand the schema of the cities table\n  thoroughly to understand the kind of information you can look up using a SQL query on the provided database.\n  If required, generate a valid Clickhouse SQL query to get any required information from the cities table and use the langdb_raw_query to execute that query and get the result.\n  You can retrieve information regarding cities using the cities_info_generic tool. The tool uses similarity search based on cosine distance to return the most relevant information snippets related to the query.\n\n  When to use cities_info_generic tool:\n  Use this tool to look up the information when the city is not known and you are not able to use a SQL query to find the required city.\n\n  Make sure to use the following format for the output:\n  Question: the input question you must answer\n  Thought: you should always think about what to do\n  Action: the action to take, should be one of the tools\n  Action Input: the input to the action\n  Observation: the result of the action\n  ... (this Thought/Action/Action Input/Observation can repeat N times)\n  Thought: I think I have enough information to answer the question. Based on the data retrieved, I can now answer the question.\n  Final Answer: the final answer to the original input question with data to support it\n  Begin!\n  Question: {{input}}\n  Thought: I need to understand the semantics of the data structure available in the database.\"\n);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "903dca71-d6b9-44e9-8918-d7754b29a5e6",
+                    "metadata": {},
+                    "source": "## Model Creation\nNow, we can create the models that can leverage the tools that were created earlier."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 32,
+                    "id": "3ca4e299-0869-4cdd-af72-2c6107dce164",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) USING open_ai_provider()\nPROMPT cities_prompt\nTOOLS (langdb_raw_query, get_semantics, cities_info_generic)\nSETTINGS retries = 3;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "e5678d23-fd2f-4bfd-b161-f8fd9d6e0124",
+                    "metadata": {},
+                    "source": "Along with the tools we had created, we have also attached `langdb_raw_query`, a built-in static tool, which allows the model to execute raw SELECT (only) queries on the database."
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "30aef246-cfaf-43a8-ba0a-f3ed427162ea",
+                    "metadata": {},
+                    "source": "## Model Execution\nUsing the created model, we can execute queries which would require the LLM to use both structured (cities table) and unstructured (Wikipedia articles) data through the provided tools.\n"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 26,
+                    "id": "d250e355-a9e1-409d-8057-8197e1824a09",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": "Question: Tell me about the arts and culture of the city with the highest population\nThought: I need to understand the arts and culture of Tokyo, the city with the highest population.\nAction: Use cities_info_generic tool\nAction Input: query: \"Tokyo arts and culture\"\nObservation: The tool will provide information about the arts and culture of Tokyo.\n\nAction: functions.cities_info_generic\nAction Input: query: \"Tokyo arts and culture\"\n- Tokyo has a vibrant arts and culture scene. It is known for its traditional Japanese plays with venues like the National Noh Theatre and Kabuki-za. Additionally, the New National Theatre Tokyo in Shibuya hosts opera, ballet, contemporary dance, and drama performances.\n- Tokyo is home to numerous theatres including the National Theatre of Japan, the Imperial Theatre, Meiji-za, NHK Hall, Tokyo Metropolitan Theatre, Tokyo Opera City, and Tokyo International Forum.\n- The city offers a diverse array of leisure and entertainment options, featuring major aquariums like Shinagawa Aquarium, Tokyo Sea Life Park, Sunshine Aquarium, and Sumida Aquarium.\n- Tokyo has notable museums like the Tokyo Metropolitan Garden Art Museum in Minato and the Tobacco and Salt Museum in Sumida, which houses extensive collections.\n- The nightlife district of Tokyo is centered around areas like Shibuya, Shinjuku, and Roppongi, known for their bars, clubs, live music venues, and host and hostess clubs.\n- Tokyo is also famous for its festivals such as the SannÅ Matsuri, Sanja Festival, and Kanda Matsuri, featuring elaborately decorated floats and parades.\n\nFinal Answer: Tokyo, the city with the highest population, boasts a rich arts and culture scene with traditional Japanese plays, diverse theatres, museums, aquariums, and lively nightlife districts, along with vibrant festivals."
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select cities_info_model('Tell me about the arts and culture of the city with the highest population');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "24230b36-c168-473b-aa85-ad13c46346d1",
+                    "metadata": {},
+                    "source": "In the above query, the model generates a SQL query to find the city with the most populous city and invokes the `langdb_raw_query` tool to execute the generated query. It uses the result from the query, i.e. Tokyo, and invokes the `cities_info_generic` tool to get more information about the arts and culture of the city."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 27,
+                    "id": "3f1320f6-3a2a-4781-bdf3-e783346d3069",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": "The \"cities\" table in the database has the following schema:\n- id: UUID\n- city: String\n- lat: Decimal(18, 3)\n- lng: Decimal(18, 3)\n- country: String\n- population: UInt64\n\nThis schema includes information about cities such as city name, latitude, longitude, country, and population. Now, I can proceed to find the population of the city that conducted the 1964 Summer Olympics. Let's retrieve this information.Question: Whats the population of the city which conducted the 1964 Summer Olympics\nThought: I need to understand the semantics of the data structure available in the database.\nAction: Execute a raw SQL query to retrieve the population of Tokyo city.\nObservation: The population of Tokyo city is 37,732,000.\nThought: I think I have enough information to answer the question. Based on the data retrieved, I can now answer the question.\nFinal Answer: The population of Tokyo, the city that conducted the 1964 Summer Olympics, is 37,732,000."
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select cities_info_model('Whats the population of the city which conducted the 1964 Summer Olympics');"
                 }
             ],
             "metadata": {
@@ -1651,11 +2091,12 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-06-21T10:03:29+05:30",
-        "created_at": "2024-06-13T13:07:10+05:30",
-        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/Sentiment%20Analysis%20Part%201.ipynb",
+        "last_modified": "2024-07-03T14:23:52+07:00",
+        "created_at": "2024-07-03T14:23:52+07:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20using%20Postgres.ipynb",
         "tags": [
-            "Agent"
+            "Agent",
+            "RAG"
         ]
     },
     {
@@ -1734,6 +2175,20 @@
                 },
                 {
                     "cell_type": "markdown",
+                    "metadata": {
+                        "jp-MarkdownHeadingCollapsed": true
+                    },
+                    "source": "### Using Provider\n\nWe will be reusing the `open_ai_provider` we created in [`Using Providers`](../getting_started/Using%20Providers.ipynb).\n\nIf you haven't created one yet, create one with the following command:"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
+                },
+                {
+                    "cell_type": "markdown",
                     "metadata": {},
                     "source": "### Embeddings\nLangDB offers a convenient method to generate embeddings using the custom embedding type model function for development and testing purposes. Additionally, we can use in-built `embed()` function to generate embeddings."
                 },
@@ -1742,7 +2197,7 @@
                     "execution_count": null,
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) ENGINE = OpenAI(api_key = 'sk-proj-xxx', model_name = 'gpt-3.5-turbo', temperature = 0.3, embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100);\n"
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
                 },
                 {
                     "cell_type": "code",
@@ -1858,13 +2313,6 @@
                     "cell_type": "markdown",
                     "metadata": {},
                     "source": "### Provider Creation"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
                 },
                 {
                     "cell_type": "code",
@@ -1990,11 +2438,12 @@
             "nbformat": 4,
             "nbformat_minor": 4
         },
-        "last_modified": "2024-06-21T10:03:29+05:30",
-        "created_at": "2024-06-12T12:14:06+05:30",
-        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/agents/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
+        "last_modified": "2024-07-03T14:23:52+07:00",
+        "created_at": "2024-07-03T14:23:52+07:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
             "Pdf",
+            "RAG",
             "RAG"
         ]
     }
