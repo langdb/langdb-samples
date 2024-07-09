@@ -146,7 +146,7 @@
                     "cell_type": "markdown",
                     "id": "1c6e40e4-ceb4-4328-8c37-5d55fd2beea3",
                     "metadata": {},
-                    "source": "# RAG powered by LangDB\n\nLangDB aims to bridge the gap between data and AI world by running them alongside. You can create an entire LangDB experience just using SQL commands all the way from extraction to creating a chat agent. \n\nThis sample demonstrates the following:\n\n- Extract data from PDF using `load_pdf_text` command.\n- Create a RAG function that leverages vector search easily using `Agent`\n- Create a LangDB `model` that connects to `OpenAI` APIs."
+                    "source": "# PDF extraction & RAG powered by LangDB\n\nLangDB aims to bridge the gap between data and AI world by running them alongside. You can create an entire LangDB experience just using SQL commands all the way from extraction to creating a chat agent. \n\nThis sample demonstrates the following:\n\n- Extract data from PDF using `load_pdf_text` command.\n- Create a RAG function that leverages vector search easily using `Agent`\n- Create a LangDB `model` that connects to `OpenAI` APIs."
                 },
                 {
                     "cell_type": "markdown",
@@ -399,7 +399,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-03T14:23:52+07:00",
+        "last_modified": "2024-07-09T10:45:22+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/PDF%20extraction%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
@@ -502,7 +502,7 @@
                     "cell_type": "markdown",
                     "id": "328cb4cb-509e-4411-8bd4-dadf4edd49c9",
                     "metadata": {},
-                    "source": "# Combining Structured and Unstructured Data\nWe will recreate an example use case from [LlamaIndex](https://docs.llamaindex.ai/en/stable/examples/query_engine/SQLJoinQueryEngine/).\nIn this example, we will create a model that will combine insights from structured data (SQL tables) and unstructured data (Wikipedia articles) to answer user queries. "
+                    "source": "# Combining Structured and Unstructured Data Using PostgreSQL\nWe will recreate an example use case from [LlamaIndex](https://docs.llamaindex.ai/en/stable/examples/query_engine/SQLJoinQueryEngine/).\nIn this example, we will create a model that will combine insights from structured data (SQL tables) and unstructured data (Wikipedia articles) to answer user queries. "
                 },
                 {
                     "cell_type": "markdown",
@@ -510,7 +510,7 @@
                     "metadata": {
                         "jp-MarkdownHeadingCollapsed": true
                     },
-                    "source": "### Schema Creation and Loading Data in PostgreSQL\nWe first create a cities table which contains information about different cities regarding their geographic location, population, and the country in which they are located.\n\nYou can run the following code to create the table and insert some sample data or use the credentials in the following code.:"
+                    "source": "### Schema Creation and Loading Data in PostgreSQL\nWe first create a cities table which contains information about different cities regarding their geographic location, population, and the country in which they are located.\n\nYou can run the following code to create the table and insert some sample data and use the credentials in the following code.:"
                 },
                 {
                     "cell_type": "code",
@@ -540,7 +540,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE TABLE cities (\n\t`id` UUID DEFAULT generateUUIDv4(),\n\t`city` String,\n\t`lat` Decimal64(3),\n\t`lng` Decimal64(3),\n\t`country` String,\n\t`population` UInt64\n) engine = PostgreSQL('aws-0-ap-southeast-1.pooler.supabase.com', 'postgres', 'cities', 'langdb.ballibhxhsacfkzrwgjk', 'langdb');"
+                    "source": "CREATE TABLE cities (\n\t`id` UUID DEFAULT generateUUIDv4(),\n\t`city` String,\n\t`lat` Decimal64(3),\n\t`lng` Decimal64(3),\n\t`country` String,\n\t`population` UInt64\n) engine = PostgreSQL(host:port, database, table, user, password);"
                 },
                 {
                     "cell_type": "code",
@@ -556,7 +556,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE TABLE pdf_links (\n\t`city` String,\n\t`link` String\n) engine = PostgreSQL('aws-0-ap-southeast-1.pooler.supabase.com', 'postgres', 'pdf_links', 'langdb.ballibhxhsacfkzrwgjk', 'langdb');"
+                    "source": "CREATE TABLE pdf_links (\n\t`city` String,\n\t`link` String\n) engine = PostgreSQL(host:port, database, table, user, password);"
                 },
                 {
                     "cell_type": "markdown",
@@ -825,7 +825,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-03T14:23:52+07:00",
+        "last_modified": "2024-07-08T09:45:45+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/RAG%20Creation%20using%20Postgres.ipynb",
         "tags": [
@@ -1378,6 +1378,343 @@
         ]
     },
     {
+        "title": "Combining Insights from Structured and Unstructured Data using LangDB",
+        "content": {
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "id": "328cb4cb-509e-4411-8bd4-dadf4edd49c9",
+                    "metadata": {},
+                    "source": "# Combining Structured and Unstructured Data\nWe will recreate an example use case from [LlamaIndex](https://docs.llamaindex.ai/en/stable/examples/query_engine/SQLJoinQueryEngine/).\nIn this example, we will create a model that will combine insights from structured data (SQL tables) and unstructured data (Wikipedia articles) to answer user queries. "
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "79a79bad-184c-4a98-bf42-4ecf5149d7c8",
+                    "metadata": {},
+                    "source": "## Schema Creation and Loading Data\nWe first create a cities table which contains information about different cities regarding their geographic location, population, and the country in which they are located."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "55f46dd6",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE TABLE cities (\n\t`id` UUID DEFAULT generateUUIDv4(),\n\t`city` String,\n\t`lat` Decimal64(3),\n\t`lng` Decimal64(3),\n\t`country` String,\n\t`population` UInt64\n) engine = MergeTree\nORDER BY id;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "b201f9b5-eb22-44af-9eb0-23308eb60a2a",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "INSERT INTO cities(city, lat, lng, country, population) VALUES\n    ('Tokyo','35.6897','139.6922','Japan','37732000'),\n    ('Jakarta','-6.1750','106.8275','Indonesia','33756000'),\n    ('Delhi','28.6100','77.2300','India','32226000'),\n    ('Manila','14.5958','120.9772','Philippines','24922000'),\n    ('Dhaka','23.7639','90.3889','Bangladesh','18627000'),\n    ('Beijing','39.9067','116.3975','China','18522000'),\n    ('Moscow','55.7558','37.6172','Russia','17332000'),\n    ('Karachi','24.8600','67.0100','Pakistan','15738000'),\n    ('Ho Chi Minh City','10.7756','106.7019','Vietnam','15136000'),\n    ('Singapore','1.3000','103.8000','Singapore','5983000'),\n    ('Tashkent','41.3111','69.2797','Uzbekistan','2956384'),\n    ('Phnom Penh','11.5694','104.9211','Cambodia','2129371'),\n    ('Bishkek','42.8747','74.6122','Kyrgyzstan','1120827'),\n    ('Tbilisi','41.7225','44.7925','Georgia','1118035'),\n    ('Sri Jayewardenepura Kotte','6.9108','79.8878','Sri Lanka','115826');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "a112e713",
+                    "metadata": {},
+                    "source": "### Loading the PDFs links\nWe create a pdfs table to store the PDFs containing information about the cities, obtained from Wikipedia. We extract semantically chunked data from the PDFs using the built-in function load_pdf_text(), and insert it into the tables."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 1,
+                    "id": "6940163f-1096-4b9d-a6d4-acc5f6fe4076",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE cities_links (\n\t`city` String,\n\t`link` String\n) engine = MergeTree\norder by city;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "e43e3eff-c6e6-4e25-9cdd-5827e696f3b4",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "INSERT INTO cities_links(city, link) VALUES\n    ('Beijing','https://en.wikipedia.org/api/rest_v1/page/pdf/Beijing'),\n    ('Tokyo','https://en.wikipedia.org/api/rest_v1/page/pdf/Tokyo'),\n    ('Jakarta','https://en.wikipedia.org/api/rest_v1/page/pdf/Jakarta'),\n    ('Delhi','https://en.wikipedia.org/api/rest_v1/page/pdf/New_Delhi'),\n    ('Manila','https://en.wikipedia.org/api/rest_v1/page/pdf/Manila'),\n    ('Dhaka','https://en.wikipedia.org/api/rest_v1/page/pdf/Dhaka'),\n    ('Moscow','https://en.wikipedia.org/api/rest_v1/page/pdf/Moscow'),\n    ('Karachi','https://en.wikipedia.org/api/rest_v1/page/pdf/Karachi'),\n    ('Singapore','https://en.wikipedia.org/api/rest_v1/page/pdf/Singapore'),\n    ('Tashkent','https://en.wikipedia.org/api/rest_v1/page/pdf/Tashkent'),\n    ('Phnom Penh','https://en.wikipedia.org/api/rest_v1/page/pdf/Phnom_Penh'),\n    ('Bishkek','https://en.wikipedia.org/api/rest_v1/page/pdf/Bishkek'),\n    ('Tbilisi','https://en.wikipedia.org/api/rest_v1/page/pdf/Tbilisi'),\n    ('Sri Jayewardenepura Kotte','https://en.wikipedia.org/api/rest_v1/page/pdf/Sri_Jayawardenepura_Kotte'),\n    ('Ho Chi Minh City','https://en.wikipedia.org/api/rest_v1/page/pdf/Ho_Chi_Minh_City');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "0b527626-271b-47cf-b9a5-270d44e10934",
+                    "metadata": {},
+                    "source": "## Loading the PDFs\nWe create a pdfs table to store the PDFs containing information about the cities, obtained from Wikipedia. We extract semantically chunked data from the PDFs using the built-in function load_pdf_text(), and insert it into the tables."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 4,
+                    "id": "c523ce6a-9f4c-43cd-9f47-e4bda8f97ef1",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE cities_pdf (\n  `id` UUID DEFAULT generateUUIDv4(),\n  `content` String, \n  `metadata` String, \n  `city` String\n) engine = MergeTree\norder by (id, content);"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 6,
+                    "id": "d1f1e71b-3e0a-4907-9f60-c0b951959592",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "INSERT INTO cities_pdf(content, metadata, city) \nSELECT content, metadata, JSONExtractString(metadata,'city')\nFROM load_pdf_text((SELECT link, city from cities_links));"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "fdb45e72",
+                    "metadata": {
+                        "jp-MarkdownHeadingCollapsed": true
+                    },
+                    "source": "### Using Provider\n\nWe will be reusing the `open_ai_provider` we created in [`Using Providers`](Using%20Providers.ipynb).\n\nIf you haven't created one yet, create one with the following command:"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "87260340",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "c66fe141-8a03-4231-ba8f-cde076b3980f",
+                    "metadata": {},
+                    "source": "## Embeddings\nLangDB offers a convenient method to generate embeddings using the custom embedding type model function for development and testing purposes. Additionally, we can use in-built `embed()` function to generate embeddings."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "81f1023b",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 22,
+                    "id": "f1341902-dad1-4b4e-9511-227ee039ec50",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE cities_embeddings (\n  id UUID,\n  embeddings `Array`(`Float32`),\n) \nengine = MergeTree\norder by id;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "6c47e390-05cd-4dc8-9379-f14686f60d38",
+                    "metadata": {},
+                    "source": "While we can use `custom_embed()` to generate embeddings for each chunk and store them, we can also run the whole process in background using `SPAWN TASK` which essentially creates a cron job."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 36,
+                    "id": "3d386558-b4cd-477b-b4c8-51aab12261ec",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": "Spawned Task: generate_embeddings with id: e7f9e793-181e-490b-b56e-2c70958b0946"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "SPAWN TASK generate_embeddings_cities\nBEGIN\n    INSERT INTO cities_embeddings\n    select p.id, custom_embed(content) from cities_pdf as p LEFT JOIN cities_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 5 second\nWITH MAX_POOL_SIZE 5;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "7ee88a0c-96ca-4177-bcc9-b11176e3224f",
+                    "metadata": {},
+                    "source": "## AGENT Creation\nFirst, we create agent which utilize vector search to find relevant chunks. While the cities_info_generic could be utilized to get information about the query."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 24,
+                    "id": "3d554b8a-ad85-4aab-8ef8-8191fd19b30c",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE AGENT cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(custom_embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  cities_embeddings AS pe \nJOIN \n  cities_pdf AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'get information about cities';"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "45668de6-c81a-4e8a-b8a9-0b6010f1c1e4",
+                    "metadata": {},
+                    "source": "### Using Agent\n\nUsing the agent to understand how similarity search works"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 20,
+                    "id": "9203b8c1-ec3c-499d-83c7-5288b076ffef",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>id</th>\n      <th>content</th>\n      <th>cosineDistance</th>\n      <th>city</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>0e6496a7-3048-469a-9b95-430c3b9bd1ea</td>\n      <td>Moscow was the host city of the 1980 Summer Olympics, with the yachting events being held at Tallinn, in present-day\\r\\nEstonia. Large sports facilities and the main international airport, Sheremetyevo Terminal 2, were built in preparation for\\r\\nthe 1980 Summer Olympics. Moscow had made a bid for the 2012 Summer\\r\\nOlympics. However, when final voting commenced on July 6, 2005, Moscow was\\r\\nthe first city to be eliminated from further rounds. The Games were awarded to\\r\\nLondon.\\r\\nThe most titled ice hockey team in the Soviet Union and in the world, HC CSKA\\r\\nMoscow comes from Moscow. Other big ice hockey clubs from Moscow are HC\\r\\nDynamo Moscow, which was the second most titled team in the Soviet Union, and\\r\\nHC Spartak Moscow.\\r\\nThe most titled Soviet, Russian, and one of the most titled Euroleague clubs, is the\\r\\nbasketball club from Moscow PBC CSKA Moscow. Moscow hosted the\\r\\nEuroBasket in 1953 and 1965.\\r\\nMoscow had more winners at the USSR and Russian Chess Championship than any other city.</td>\n      <td>0.167045</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>0e6496a7-3048-469a-9b95-430c3b9bd1ea</td>\n      <td>Moscow was the host city of the 1980 Summer Olympics, with the yachting events being held at Tallinn, in present-day\\r\\nEstonia. Large sports facilities and the main international airport, Sheremetyevo Terminal 2, were built in preparation for\\r\\nthe 1980 Summer Olympics. Moscow had made a bid for the 2012 Summer\\r\\nOlympics. However, when final voting commenced on July 6, 2005, Moscow was\\r\\nthe first city to be eliminated from further rounds. The Games were awarded to\\r\\nLondon.\\r\\nThe most titled ice hockey team in the Soviet Union and in the world, HC CSKA\\r\\nMoscow comes from Moscow. Other big ice hockey clubs from Moscow are HC\\r\\nDynamo Moscow, which was the second most titled team in the Soviet Union, and\\r\\nHC Spartak Moscow.\\r\\nThe most titled Soviet, Russian, and one of the most titled Euroleague clubs, is the\\r\\nbasketball club from Moscow PBC CSKA Moscow. Moscow hosted the\\r\\nEuroBasket in 1953 and 1965.\\r\\nMoscow had more winners at the USSR and Russian Chess Championship than any other city.</td>\n      <td>0.167045</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>ae687a62-73a5-411a-be00-46fedce90931</td>\n      <td>The Bolshoi Theatre\\r\\nThe Luzhniki Stadium hosted the\\r\\n1980 Summer Olympics and the\\r\\n2018 FIFA World Cup Final.\\r\\nSparrow Hills fanzone during 2018\\r\\nFIFA World Cup\\r\\nSC Olimpiyskiy was built for the\\r\\n1980 Summer Olympics.\\r\\nCSKAArena during a game of KHL,\\r\\nconsidered to be the second-best ice\\r\\nhockey league in the world\\r\\nMoscow will get its own branch of the Hermitage Museum in 2024, with authorities having agreed upon the final project, to be executed by Hani Rashid, co\u0002founder of New York-based 'Asymptote Architecture' - the same bureau that's behind the city's stock market building, the Busan-based World Business Center\\r\\nSolomon Tower and the Strata Tower in Abu-Dhabi.\\r\\n[136]\\r\\nMoscow is the heart of the Russian performing arts, including ballet and film, with 68\\r\\nmuseums\\r\\n[137] 103[138] theaters, 132 cinemas and 24 concert halls. Among Moscow's theaters\\r\\nand ballet studios is the Bolshoi Theatre and the Malyi Theatre\\r\\n[139] as well as Vakhtangov\\r\\nTheatre and Moscow Art Theatre.</td>\n      <td>0.167222</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>ae687a62-73a5-411a-be00-46fedce90931</td>\n      <td>The Bolshoi Theatre\\r\\nThe Luzhniki Stadium hosted the\\r\\n1980 Summer Olympics and the\\r\\n2018 FIFA World Cup Final.\\r\\nSparrow Hills fanzone during 2018\\r\\nFIFA World Cup\\r\\nSC Olimpiyskiy was built for the\\r\\n1980 Summer Olympics.\\r\\nCSKAArena during a game of KHL,\\r\\nconsidered to be the second-best ice\\r\\nhockey league in the world\\r\\nMoscow will get its own branch of the Hermitage Museum in 2024, with authorities having agreed upon the final project, to be executed by Hani Rashid, co\u0002founder of New York-based 'Asymptote Architecture' - the same bureau that's behind the city's stock market building, the Busan-based World Business Center\\r\\nSolomon Tower and the Strata Tower in Abu-Dhabi.\\r\\n[136]\\r\\nMoscow is the heart of the Russian performing arts, including ballet and film, with 68\\r\\nmuseums\\r\\n[137] 103[138] theaters, 132 cinemas and 24 concert halls. Among Moscow's theaters\\r\\nand ballet studios is the Bolshoi Theatre and the Malyi Theatre\\r\\n[139] as well as Vakhtangov\\r\\nTheatre and Moscow Art Theatre.</td>\n      <td>0.167222</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>77322727-8eb9-4671-a0ae-c40065bf4bcd</td>\n      <td>The China Central Television\\r\\nHeadquarters building in CBD\\r\\nA scene from the opening\\r\\nceremonies of the 2008 Summer\\r\\nOlympic Games\\r\\nBeijing Workers' Stadium at night as\\r\\nviewed from Sanlitun\\r\\nFamous rock bands and solo artists from Beijing include Cui Jian, Dou Wei, He Yong, Pu Shu, Tang\\r\\nDynasty, Black Panther, The Flowers, 43 Baojia Street, etc.\\r\\n[220]\\r\\nBeijing has hosted numerous international and national sporting events, the most notables was the 2008\\r\\nSummer Olympic and Paralympic Games and the 2022 Winter Olympics and the Paralympics. Other multi\u0002sport international events held in Beijing include the 2001 Summer Universiade and the 1990 Asian Games.\\r\\nSingle-sport international competitions include the Beijing Marathon (annually since 1981), China Open of\\r\\nTennis (1993–97, annually since 2004), ISU Grand Prix of Figure Skating Cup of China (2003, 2004, 2005,\\r\\n2008, 2009 and 2010), World Professional Billiards and Snooker Association China Open for Snooker</td>\n      <td>0.170085</td>\n      <td>Beijing</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "SELECT * from cities_info_generic('Olympics')"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "b1dc2054-453d-4e49-94b5-a4976740b655",
+                    "metadata": {},
+                    "source": "We create another tool, `get_semantics`, which uses the built-in table function `semantics()`, which returns the schemas of all the tables in the database."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 26,
+                    "id": "eb8b7f96-ee30-48da-b6cf-2f087c6aa043",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE AGENT get_semantics() AS \n(SELECT * FROM semantics())\nCOMMENT 'Schemas of all the tables';"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "d899d635-0429-43e5-b5cd-ea31d111f1ea",
+                    "metadata": {},
+                    "source": "## Prompt Creation\nWe create a prompt for our use case based on the ReAct framework."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "c0877078-ed54-43d2-9daa-0c720ddab3ed",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROMPT cities_prompt (\nsystem \"You are a master data agent. Your task is to provide useful information to the user about a city based on the question.\n  Only use information retrieved using the supplied tools.\n  For doing this, first, fetch the schema of the tables in the database using the get_semantics tool. Understand the schema of the cities table\n  thoroughly to understand the kind of information you can look up using a SQL query on the provided database.\n  If required, generate a valid Clickhouse SQL query to get any required information from the cities table and use the langdb_raw_query to execute that query and get the result.\n  You can retrieve information regarding cities using the cities_info_generic tool. The tool uses similarity search based on cosine distance to return the most relevant information snippets related to the query.\n\n  When to use cities_info_generic tool:\n  Use this tool to look up the information when the city is not known and you are not able to use a SQL query to find the required city.\n\n  Make sure to use the following format for the output:\n  Question: the input question you must answer\n  Thought: you should always think about what to do\n  Action: the action to take, should be one of the tools\n  Action Input: the input to the action\n  Observation: the result of the action\n  ... (this Thought/Action/Action Input/Observation can repeat N times)\n  Thought: I think I have enough information to answer the question. Based on the data retrieved, I can now answer the question.\n  Final Answer: the final answer to the original input question with data to support it\n  Begin!\n  Question: {{input}}\n  Thought: I need to understand the semantics of the data structure available in the database.\"\n);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "903dca71-d6b9-44e9-8918-d7754b29a5e6",
+                    "metadata": {},
+                    "source": "## Model Creation\nNow, we can create the models that can leverage the tools that were created earlier."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 32,
+                    "id": "3ca4e299-0869-4cdd-af72-2c6107dce164",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) USING open_ai_provider()\nPROMPT cities_prompt\nTOOLS (langdb_raw_query, get_semantics, cities_info_generic)\nSETTINGS retries = 3;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "e5678d23-fd2f-4bfd-b161-f8fd9d6e0124",
+                    "metadata": {},
+                    "source": "Along with the tools we had created, we have also attached `langdb_raw_query`, a built-in static tool, which allows the model to execute raw SELECT (only) queries on the database."
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "30aef246-cfaf-43a8-ba0a-f3ed427162ea",
+                    "metadata": {},
+                    "source": "## Model Execution\nUsing the created model, we can execute queries which would require the LLM to use both structured (cities table) and unstructured (Wikipedia articles) data through the provided tools.\n"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 26,
+                    "id": "d250e355-a9e1-409d-8057-8197e1824a09",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": "Question: Tell me about the arts and culture of the city with the highest population\nThought: I need to understand the arts and culture of Tokyo, the city with the highest population.\nAction: Use cities_info_generic tool\nAction Input: query: \"Tokyo arts and culture\"\nObservation: The tool will provide information about the arts and culture of Tokyo.\n\nAction: functions.cities_info_generic\nAction Input: query: \"Tokyo arts and culture\"\n- Tokyo has a vibrant arts and culture scene. It is known for its traditional Japanese plays with venues like the National Noh Theatre and Kabuki-za. Additionally, the New National Theatre Tokyo in Shibuya hosts opera, ballet, contemporary dance, and drama performances.\n- Tokyo is home to numerous theatres including the National Theatre of Japan, the Imperial Theatre, Meiji-za, NHK Hall, Tokyo Metropolitan Theatre, Tokyo Opera City, and Tokyo International Forum.\n- The city offers a diverse array of leisure and entertainment options, featuring major aquariums like Shinagawa Aquarium, Tokyo Sea Life Park, Sunshine Aquarium, and Sumida Aquarium.\n- Tokyo has notable museums like the Tokyo Metropolitan Garden Art Museum in Minato and the Tobacco and Salt Museum in Sumida, which houses extensive collections.\n- The nightlife district of Tokyo is centered around areas like Shibuya, Shinjuku, and Roppongi, known for their bars, clubs, live music venues, and host and hostess clubs.\n- Tokyo is also famous for its festivals such as the SannÅ Matsuri, Sanja Festival, and Kanda Matsuri, featuring elaborately decorated floats and parades.\n\nFinal Answer: Tokyo, the city with the highest population, boasts a rich arts and culture scene with traditional Japanese plays, diverse theatres, museums, aquariums, and lively nightlife districts, along with vibrant festivals."
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select cities_info_model('Tell me about the arts and culture of the city with the highest population');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "24230b36-c168-473b-aa85-ad13c46346d1",
+                    "metadata": {},
+                    "source": "In the above query, the model generates a SQL query to find the city with the most populous city and invokes the `langdb_raw_query` tool to execute the generated query. It uses the result from the query, i.e. Tokyo, and invokes the `cities_info_generic` tool to get more information about the arts and culture of the city."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 27,
+                    "id": "3f1320f6-3a2a-4781-bdf3-e783346d3069",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": "The \"cities\" table in the database has the following schema:\n- id: UUID\n- city: String\n- lat: Decimal(18, 3)\n- lng: Decimal(18, 3)\n- country: String\n- population: UInt64\n\nThis schema includes information about cities such as city name, latitude, longitude, country, and population. Now, I can proceed to find the population of the city that conducted the 1964 Summer Olympics. Let's retrieve this information.Question: Whats the population of the city which conducted the 1964 Summer Olympics\nThought: I need to understand the semantics of the data structure available in the database.\nAction: Execute a raw SQL query to retrieve the population of Tokyo city.\nObservation: The population of Tokyo city is 37,732,000.\nThought: I think I have enough information to answer the question. Based on the data retrieved, I can now answer the question.\nFinal Answer: The population of Tokyo, the city that conducted the 1964 Summer Olympics, is 37,732,000."
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select cities_info_model('Whats the population of the city which conducted the 1964 Summer Olympics');"
+                }
+            ],
+            "metadata": {
+                "kernelspec": {
+                    "display_name": "langdb",
+                    "language": "sql",
+                    "name": "langdb"
+                },
+                "language_info": {
+                    "codemirror_mode": "sql",
+                    "file_extension": ".sql",
+                    "mimetype": "text/x-sql",
+                    "name": "sql"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 5
+        },
+        "last_modified": "2024-07-09T10:53:11+05:30",
+        "created_at": "2024-07-09T10:53:11+05:30",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20using%20LangDB.ipynb",
+        "tags": [
+            "Agent",
+            "RAG"
+        ]
+    },
+    {
         "title": "CRAG",
         "content": {
             "cells": [
@@ -1765,345 +2102,6 @@
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/CRAG.ipynb",
         "tags": [
             "RAG",
-            "RAG"
-        ]
-    },
-    {
-        "title": "Combining Insights from Structured and Unstructured Data using Postgres",
-        "content": {
-            "cells": [
-                {
-                    "cell_type": "markdown",
-                    "id": "328cb4cb-509e-4411-8bd4-dadf4edd49c9",
-                    "metadata": {},
-                    "source": "# Combining Structured and Unstructured Data\nWe will recreate an example use case from [LlamaIndex](https://docs.llamaindex.ai/en/stable/examples/query_engine/SQLJoinQueryEngine/).\nIn this example, we will create a model that will combine insights from structured data (SQL tables) and unstructured data (Wikipedia articles) to answer user queries. "
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "79a79bad-184c-4a98-bf42-4ecf5149d7c8",
-                    "metadata": {
-                        "jp-MarkdownHeadingCollapsed": true
-                    },
-                    "source": "### Schema Creation and Loading Data in PostgreSQL\nWe first create a cities table which contains information about different cities regarding their geographic location, population, and the country in which they are located.\n\nYou can run the following code to create the table and insert some sample data or use the credentials in the following code.:"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "55f46dd6",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE TABLE cities (\n    id UUID DEFAULT gen_random_uuid(),\n    city VARCHAR(255),\n    lat DECIMAL(10, 3),\n    lng DECIMAL(10, 3),\n    country VARCHAR(255),\n    population BIGINT\n);\n\nINSERT INTO cities(city, lat, lng, country, population) VALUES\n    ('Tokyo','35.6897','139.6922','Japan','37732000'),\n    ('Jakarta','-6.1750','106.8275','Indonesia','33756000'),\n    ('Delhi','28.6100','77.2300','India','32226000'),\n    ('Manila','14.5958','120.9772','Philippines','24922000'),\n    ('Dhaka','23.7639','90.3889','Bangladesh','18627000'),\n    ('Beijing','39.9067','116.3975','China','18522000'),\n    ('Moscow','55.7558','37.6172','Russia','17332000'),\n    ('Karachi','24.8600','67.0100','Pakistan','15738000'),\n    ('Ho Chi Minh City','10.7756','106.7019','Vietnam','15136000'),\n    ('Singapore','1.3000','103.8000','Singapore','5983000'),\n    ('Tashkent','41.3111','69.2797','Uzbekistan','2956384'),\n    ('Phnom Penh','11.5694','104.9211','Cambodia','2129371'),\n    ('Bishkek','42.8747','74.6122','Kyrgyzstan','1120827'),\n    ('Tbilisi','41.7225','44.7925','Georgia','1118035'),\n    ('Sri Jayewardenepura Kotte','6.9108','79.8878','Sri Lanka','115826');\n\n\n\nCREATE TABLE pdf_links (\n    city VARCHAR(255),\n    link VARCHAR(255)\n);\n\n\nINSERT INTO pdf_links(city, link) VALUES\n    ('Beijing','https://en.wikipedia.org/api/rest_v1/page/pdf/Beijing'),\n    ('Tokyo','https://en.wikipedia.org/api/rest_v1/page/pdf/Tokyo'),\n    ('Jakarta','https://en.wikipedia.org/api/rest_v1/page/pdf/Jakarta'),\n    ('Delhi','https://en.wikipedia.org/api/rest_v1/page/pdf/New_Delhi'),\n    ('Manila','https://en.wikipedia.org/api/rest_v1/page/pdf/Manila'),\n    ('Dhaka','https://en.wikipedia.org/api/rest_v1/page/pdf/Dhaka'),\n    ('Moscow','https://en.wikipedia.org/api/rest_v1/page/pdf/Moscow'),\n    ('Karachi','https://en.wikipedia.org/api/rest_v1/page/pdf/Karachi'),\n    ('Singapore','https://en.wikipedia.org/api/rest_v1/page/pdf/Singapore'),\n    ('Tashkent','https://en.wikipedia.org/api/rest_v1/page/pdf/Tashkent'),\n    ('Phnom Penh','https://en.wikipedia.org/api/rest_v1/page/pdf/Phnom_Penh'),\n    ('Bishkek','https://en.wikipedia.org/api/rest_v1/page/pdf/Bishkek'),\n    ('Tbilisi','https://en.wikipedia.org/api/rest_v1/page/pdf/Tbilisi'),\n    ('Sri Jayewardenepura Kotte','https://en.wikipedia.org/api/rest_v1/page/pdf/Sri_Jayawardenepura_Kotte'),\n    ('Ho Chi Minh City','https://en.wikipedia.org/api/rest_v1/page/pdf/Ho_Chi_Minh_City');"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "a112e713",
-                    "metadata": {},
-                    "source": "Once the data has been loaded into postgres. We can move over to LangDB.\n## Loading Data in LangDB\n\nYou can replace the credentials in the following code with your own."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 1,
-                    "id": "6940163f-1096-4b9d-a6d4-acc5f6fe4076",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE TABLE cities (\n\t`id` UUID DEFAULT generateUUIDv4(),\n\t`city` String,\n\t`lat` Decimal64(3),\n\t`lng` Decimal64(3),\n\t`country` String,\n\t`population` UInt64\n) engine = PostgreSQL('aws-0-ap-southeast-1.pooler.supabase.com', 'postgres', 'cities', 'langdb.ballibhxhsacfkzrwgjk', 'langdb');"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 2,
-                    "id": "68d69dfd-1194-43d9-a806-431509cbb045",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE TABLE pdf_links (\n\t`city` String,\n\t`link` String\n) engine = PostgreSQL('aws-0-ap-southeast-1.pooler.supabase.com', 'postgres', 'pdf_links', 'langdb.ballibhxhsacfkzrwgjk', 'langdb');"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "0b527626-271b-47cf-b9a5-270d44e10934",
-                    "metadata": {},
-                    "source": "### Loading the PDFs\nWe create a pdfs table to store the PDFs containing information about the cities, obtained from Wikipedia. We extract semantically chunked data from the PDFs using the built-in function load_pdf_text(), and insert it into the tables."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 4,
-                    "id": "c523ce6a-9f4c-43cd-9f47-e4bda8f97ef1",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE TABLE pdfs (\n  `id` UUID DEFAULT generateUUIDv4(),\n  `content` String, \n  `metadata` String, \n  `city` String\n) engine = MergeTree\norder by (id, content);"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 6,
-                    "id": "d1f1e71b-3e0a-4907-9f60-c0b951959592",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "INSERT INTO pdfs(content, metadata, city) \nSELECT content, metadata, JSONExtractString(metadata,'city')\nFROM load_pdf_text((SELECT link, city from pdf_links));"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "fdb45e72",
-                    "metadata": {
-                        "jp-MarkdownHeadingCollapsed": true
-                    },
-                    "source": "### Using Provider\n\nWe will be reusing the `open_ai_provider` we created in [`Using Providers`](Using%20Providers.ipynb).\n\nIf you haven't created one yet, create one with the following command:"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "87260340",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-3.5-turbo'\n);"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "c66fe141-8a03-4231-ba8f-cde076b3980f",
-                    "metadata": {},
-                    "source": "## Embeddings\nLangDB offers a convenient method to generate embeddings using the custom embedding type model function for development and testing purposes. Additionally, we can use in-built `embed()` function to generate embeddings."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "81f1023b",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 22,
-                    "id": "f1341902-dad1-4b4e-9511-227ee039ec50",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE TABLE pdf_embeddings (\n  id UUID,\n  embeddings `Array`(`Float32`),\n) \nengine = MergeTree\norder by id;"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "6c47e390-05cd-4dc8-9379-f14686f60d38",
-                    "metadata": {},
-                    "source": "While we can use `custom_embed()` to generate embeddings for each chunk and store them, we can also run the whole process in background using `SPAWN TASK` which essentially creates a cron job."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 36,
-                    "id": "3d386558-b4cd-477b-b4c8-51aab12261ec",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": "Spawned Task: generate_embeddings with id: e7f9e793-181e-490b-b56e-2c70958b0946"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "SPAWN TASK generate_embeddings\nBEGIN\n    INSERT INTO pdf_embeddings\n    select p.id, custom_embed(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 5 second\nWITH MAX_POOL_SIZE 5;"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "7ee88a0c-96ca-4177-bcc9-b11176e3224f",
-                    "metadata": {},
-                    "source": "## AGENT Creation\nFirst, we create agent which utilize vector search to find relevant chunks. While the cities_info_generic could be utilized to get information about the query."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 24,
-                    "id": "3d554b8a-ad85-4aab-8ef8-8191fd19b30c",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE AGENT cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(custom_embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdfs AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'get information about cities';"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "45668de6-c81a-4e8a-b8a9-0b6010f1c1e4",
-                    "metadata": {},
-                    "source": "### Using Agent\n\nUsing the agent to understand how similarity search works"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 20,
-                    "id": "9203b8c1-ec3c-499d-83c7-5288b076ffef",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>id</th>\n      <th>content</th>\n      <th>cosineDistance</th>\n      <th>city</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>0e6496a7-3048-469a-9b95-430c3b9bd1ea</td>\n      <td>Moscow was the host city of the 1980 Summer Olympics, with the yachting events being held at Tallinn, in present-day\\r\\nEstonia. Large sports facilities and the main international airport, Sheremetyevo Terminal 2, were built in preparation for\\r\\nthe 1980 Summer Olympics. Moscow had made a bid for the 2012 Summer\\r\\nOlympics. However, when final voting commenced on July 6, 2005, Moscow was\\r\\nthe first city to be eliminated from further rounds. The Games were awarded to\\r\\nLondon.\\r\\nThe most titled ice hockey team in the Soviet Union and in the world, HC CSKA\\r\\nMoscow comes from Moscow. Other big ice hockey clubs from Moscow are HC\\r\\nDynamo Moscow, which was the second most titled team in the Soviet Union, and\\r\\nHC Spartak Moscow.\\r\\nThe most titled Soviet, Russian, and one of the most titled Euroleague clubs, is the\\r\\nbasketball club from Moscow PBC CSKA Moscow. Moscow hosted the\\r\\nEuroBasket in 1953 and 1965.\\r\\nMoscow had more winners at the USSR and Russian Chess Championship than any other city.</td>\n      <td>0.167045</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>0e6496a7-3048-469a-9b95-430c3b9bd1ea</td>\n      <td>Moscow was the host city of the 1980 Summer Olympics, with the yachting events being held at Tallinn, in present-day\\r\\nEstonia. Large sports facilities and the main international airport, Sheremetyevo Terminal 2, were built in preparation for\\r\\nthe 1980 Summer Olympics. Moscow had made a bid for the 2012 Summer\\r\\nOlympics. However, when final voting commenced on July 6, 2005, Moscow was\\r\\nthe first city to be eliminated from further rounds. The Games were awarded to\\r\\nLondon.\\r\\nThe most titled ice hockey team in the Soviet Union and in the world, HC CSKA\\r\\nMoscow comes from Moscow. Other big ice hockey clubs from Moscow are HC\\r\\nDynamo Moscow, which was the second most titled team in the Soviet Union, and\\r\\nHC Spartak Moscow.\\r\\nThe most titled Soviet, Russian, and one of the most titled Euroleague clubs, is the\\r\\nbasketball club from Moscow PBC CSKA Moscow. Moscow hosted the\\r\\nEuroBasket in 1953 and 1965.\\r\\nMoscow had more winners at the USSR and Russian Chess Championship than any other city.</td>\n      <td>0.167045</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>ae687a62-73a5-411a-be00-46fedce90931</td>\n      <td>The Bolshoi Theatre\\r\\nThe Luzhniki Stadium hosted the\\r\\n1980 Summer Olympics and the\\r\\n2018 FIFA World Cup Final.\\r\\nSparrow Hills fanzone during 2018\\r\\nFIFA World Cup\\r\\nSC Olimpiyskiy was built for the\\r\\n1980 Summer Olympics.\\r\\nCSKAArena during a game of KHL,\\r\\nconsidered to be the second-best ice\\r\\nhockey league in the world\\r\\nMoscow will get its own branch of the Hermitage Museum in 2024, with authorities having agreed upon the final project, to be executed by Hani Rashid, co\u0002founder of New York-based 'Asymptote Architecture' - the same bureau that's behind the city's stock market building, the Busan-based World Business Center\\r\\nSolomon Tower and the Strata Tower in Abu-Dhabi.\\r\\n[136]\\r\\nMoscow is the heart of the Russian performing arts, including ballet and film, with 68\\r\\nmuseums\\r\\n[137] 103[138] theaters, 132 cinemas and 24 concert halls. Among Moscow's theaters\\r\\nand ballet studios is the Bolshoi Theatre and the Malyi Theatre\\r\\n[139] as well as Vakhtangov\\r\\nTheatre and Moscow Art Theatre.</td>\n      <td>0.167222</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>ae687a62-73a5-411a-be00-46fedce90931</td>\n      <td>The Bolshoi Theatre\\r\\nThe Luzhniki Stadium hosted the\\r\\n1980 Summer Olympics and the\\r\\n2018 FIFA World Cup Final.\\r\\nSparrow Hills fanzone during 2018\\r\\nFIFA World Cup\\r\\nSC Olimpiyskiy was built for the\\r\\n1980 Summer Olympics.\\r\\nCSKAArena during a game of KHL,\\r\\nconsidered to be the second-best ice\\r\\nhockey league in the world\\r\\nMoscow will get its own branch of the Hermitage Museum in 2024, with authorities having agreed upon the final project, to be executed by Hani Rashid, co\u0002founder of New York-based 'Asymptote Architecture' - the same bureau that's behind the city's stock market building, the Busan-based World Business Center\\r\\nSolomon Tower and the Strata Tower in Abu-Dhabi.\\r\\n[136]\\r\\nMoscow is the heart of the Russian performing arts, including ballet and film, with 68\\r\\nmuseums\\r\\n[137] 103[138] theaters, 132 cinemas and 24 concert halls. Among Moscow's theaters\\r\\nand ballet studios is the Bolshoi Theatre and the Malyi Theatre\\r\\n[139] as well as Vakhtangov\\r\\nTheatre and Moscow Art Theatre.</td>\n      <td>0.167222</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>77322727-8eb9-4671-a0ae-c40065bf4bcd</td>\n      <td>The China Central Television\\r\\nHeadquarters building in CBD\\r\\nA scene from the opening\\r\\nceremonies of the 2008 Summer\\r\\nOlympic Games\\r\\nBeijing Workers' Stadium at night as\\r\\nviewed from Sanlitun\\r\\nFamous rock bands and solo artists from Beijing include Cui Jian, Dou Wei, He Yong, Pu Shu, Tang\\r\\nDynasty, Black Panther, The Flowers, 43 Baojia Street, etc.\\r\\n[220]\\r\\nBeijing has hosted numerous international and national sporting events, the most notables was the 2008\\r\\nSummer Olympic and Paralympic Games and the 2022 Winter Olympics and the Paralympics. Other multi\u0002sport international events held in Beijing include the 2001 Summer Universiade and the 1990 Asian Games.\\r\\nSingle-sport international competitions include the Beijing Marathon (annually since 1981), China Open of\\r\\nTennis (1993–97, annually since 2004), ISU Grand Prix of Figure Skating Cup of China (2003, 2004, 2005,\\r\\n2008, 2009 and 2010), World Professional Billiards and Snooker Association China Open for Snooker</td>\n      <td>0.170085</td>\n      <td>Beijing</td>\n    </tr>\n  </tbody>\n</table>"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "SELECT * from cities_info_generic('Olympics')"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "b1dc2054-453d-4e49-94b5-a4976740b655",
-                    "metadata": {},
-                    "source": "We create another tool, `get_semantics`, which uses the built-in table function `semantics()`, which returns the schemas of all the tables in the database."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 26,
-                    "id": "eb8b7f96-ee30-48da-b6cf-2f087c6aa043",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE AGENT get_semantics() AS \n(SELECT * FROM semantics())\nCOMMENT 'Schemas of all the tables';"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "d899d635-0429-43e5-b5cd-ea31d111f1ea",
-                    "metadata": {},
-                    "source": "## Prompt Creation\nWe create a prompt for our use case based on the ReAct framework."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "c0877078-ed54-43d2-9daa-0c720ddab3ed",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE PROMPT cities_prompt (\nsystem \"You are a master data agent. Your task is to provide useful information to the user about a city based on the question.\n  Only use information retrieved using the supplied tools.\n  For doing this, first, fetch the schema of the tables in the database using the get_semantics tool. Understand the schema of the cities table\n  thoroughly to understand the kind of information you can look up using a SQL query on the provided database.\n  If required, generate a valid Clickhouse SQL query to get any required information from the cities table and use the langdb_raw_query to execute that query and get the result.\n  You can retrieve information regarding cities using the cities_info_generic tool. The tool uses similarity search based on cosine distance to return the most relevant information snippets related to the query.\n\n  When to use cities_info_generic tool:\n  Use this tool to look up the information when the city is not known and you are not able to use a SQL query to find the required city.\n\n  Make sure to use the following format for the output:\n  Question: the input question you must answer\n  Thought: you should always think about what to do\n  Action: the action to take, should be one of the tools\n  Action Input: the input to the action\n  Observation: the result of the action\n  ... (this Thought/Action/Action Input/Observation can repeat N times)\n  Thought: I think I have enough information to answer the question. Based on the data retrieved, I can now answer the question.\n  Final Answer: the final answer to the original input question with data to support it\n  Begin!\n  Question: {{input}}\n  Thought: I need to understand the semantics of the data structure available in the database.\"\n);"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "903dca71-d6b9-44e9-8918-d7754b29a5e6",
-                    "metadata": {},
-                    "source": "## Model Creation\nNow, we can create the models that can leverage the tools that were created earlier."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 32,
-                    "id": "3ca4e299-0869-4cdd-af72-2c6107dce164",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) USING open_ai_provider()\nPROMPT cities_prompt\nTOOLS (langdb_raw_query, get_semantics, cities_info_generic)\nSETTINGS retries = 3;"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "e5678d23-fd2f-4bfd-b161-f8fd9d6e0124",
-                    "metadata": {},
-                    "source": "Along with the tools we had created, we have also attached `langdb_raw_query`, a built-in static tool, which allows the model to execute raw SELECT (only) queries on the database."
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "30aef246-cfaf-43a8-ba0a-f3ed427162ea",
-                    "metadata": {},
-                    "source": "## Model Execution\nUsing the created model, we can execute queries which would require the LLM to use both structured (cities table) and unstructured (Wikipedia articles) data through the provided tools.\n"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 26,
-                    "id": "d250e355-a9e1-409d-8057-8197e1824a09",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": "Question: Tell me about the arts and culture of the city with the highest population\nThought: I need to understand the arts and culture of Tokyo, the city with the highest population.\nAction: Use cities_info_generic tool\nAction Input: query: \"Tokyo arts and culture\"\nObservation: The tool will provide information about the arts and culture of Tokyo.\n\nAction: functions.cities_info_generic\nAction Input: query: \"Tokyo arts and culture\"\n- Tokyo has a vibrant arts and culture scene. It is known for its traditional Japanese plays with venues like the National Noh Theatre and Kabuki-za. Additionally, the New National Theatre Tokyo in Shibuya hosts opera, ballet, contemporary dance, and drama performances.\n- Tokyo is home to numerous theatres including the National Theatre of Japan, the Imperial Theatre, Meiji-za, NHK Hall, Tokyo Metropolitan Theatre, Tokyo Opera City, and Tokyo International Forum.\n- The city offers a diverse array of leisure and entertainment options, featuring major aquariums like Shinagawa Aquarium, Tokyo Sea Life Park, Sunshine Aquarium, and Sumida Aquarium.\n- Tokyo has notable museums like the Tokyo Metropolitan Garden Art Museum in Minato and the Tobacco and Salt Museum in Sumida, which houses extensive collections.\n- The nightlife district of Tokyo is centered around areas like Shibuya, Shinjuku, and Roppongi, known for their bars, clubs, live music venues, and host and hostess clubs.\n- Tokyo is also famous for its festivals such as the SannÅ Matsuri, Sanja Festival, and Kanda Matsuri, featuring elaborately decorated floats and parades.\n\nFinal Answer: Tokyo, the city with the highest population, boasts a rich arts and culture scene with traditional Japanese plays, diverse theatres, museums, aquariums, and lively nightlife districts, along with vibrant festivals."
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "select cities_info_model('Tell me about the arts and culture of the city with the highest population');"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "24230b36-c168-473b-aa85-ad13c46346d1",
-                    "metadata": {},
-                    "source": "In the above query, the model generates a SQL query to find the city with the most populous city and invokes the `langdb_raw_query` tool to execute the generated query. It uses the result from the query, i.e. Tokyo, and invokes the `cities_info_generic` tool to get more information about the arts and culture of the city."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 27,
-                    "id": "3f1320f6-3a2a-4781-bdf3-e783346d3069",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": "The \"cities\" table in the database has the following schema:\n- id: UUID\n- city: String\n- lat: Decimal(18, 3)\n- lng: Decimal(18, 3)\n- country: String\n- population: UInt64\n\nThis schema includes information about cities such as city name, latitude, longitude, country, and population. Now, I can proceed to find the population of the city that conducted the 1964 Summer Olympics. Let's retrieve this information.Question: Whats the population of the city which conducted the 1964 Summer Olympics\nThought: I need to understand the semantics of the data structure available in the database.\nAction: Execute a raw SQL query to retrieve the population of Tokyo city.\nObservation: The population of Tokyo city is 37,732,000.\nThought: I think I have enough information to answer the question. Based on the data retrieved, I can now answer the question.\nFinal Answer: The population of Tokyo, the city that conducted the 1964 Summer Olympics, is 37,732,000."
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "select cities_info_model('Whats the population of the city which conducted the 1964 Summer Olympics');"
-                }
-            ],
-            "metadata": {
-                "kernelspec": {
-                    "display_name": "langdb",
-                    "language": "sql",
-                    "name": "langdb"
-                },
-                "language_info": {
-                    "codemirror_mode": "sql",
-                    "file_extension": ".sql",
-                    "mimetype": "text/x-sql",
-                    "name": "sql"
-                }
-            },
-            "nbformat": 4,
-            "nbformat_minor": 5
-        },
-        "last_modified": "2024-07-03T14:23:52+07:00",
-        "created_at": "2024-07-03T14:23:52+07:00",
-        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20using%20Postgres.ipynb",
-        "tags": [
-            "Agent",
             "RAG"
         ]
     },
