@@ -306,7 +306,6 @@
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Sentiment%20Analysis%20Part%202.ipynb",
         "tags": [
-            "Agent",
             "Getting Started"
         ]
     },
@@ -539,7 +538,6 @@
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Sentiment%20Analysis%20Part%201.ipynb",
         "tags": [
-            "Agent",
             "Getting Started"
         ]
     },
@@ -678,7 +676,7 @@
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Structured%20Layout%20Extraction%20from%20PDFs%20and%20Images.ipynb",
         "tags": [
-            "Pdf",
+            "PDF",
             "Getting Started"
         ]
     },
@@ -798,7 +796,7 @@
                     "id": "7d767f48-1611-453c-a613-bf5f6fde2295",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE AGENT query_agent(input String) AS\n(SELECT query_model($input))\nCOMMENT 'Agent to search the database using SQL';"
+                    "source": "CREATE AGENT query_agent(table String, input String) AS\n(SELECT query_model($table, $input))\nCOMMENT 'Agent to search the database using SQL';"
                 }
             ],
             "metadata": {
@@ -817,7 +815,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-11T09:40:25+05:30",
+        "last_modified": "2024-07-12T00:23:14+05:30",
         "created_at": "2024-07-11T09:40:25+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Query%20Agent.ipynb",
         "tags": [
@@ -1090,7 +1088,7 @@
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/PDF%20extraction%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
-            "Pdf",
+            "PDF",
             "RAG",
             "Getting Started"
         ]
@@ -1177,7 +1175,6 @@
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Using%20Providers.ipynb",
         "tags": [
-            "Agent",
             "Getting Started"
         ]
     },
@@ -1349,7 +1346,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT similar(query String \"Query to search similar sections in pdf documents\") AS\nWITH tbl AS (\n  SELECT CAST(custom_embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  content, \n  cosineDistance(embeddings, query) AS similarity \nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdf_chunks AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  similarity DESC \n  LIMIT 5\n"
+                    "source": "CREATE AGENT similar(query String \"Query to search similar sections in pdf documents\") AS\nWITH tbl AS (\n  SELECT CAST(custom_embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  content, \n  cosineDistance(embeddings, query) AS similarity \nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdf_chunks AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  similarity ASC \n  LIMIT 5\n"
                 },
                 {
                     "cell_type": "markdown",
@@ -1409,7 +1406,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL IF NOT EXISTS legal_assist(\n  input\n) USING open_ai_provider()\nPROMPT (system \"Use the tool 'similar' to query for similar documents based on user query to assist with quickly searching legal documents.\",\n  human \"{{input}}\")\nTOOLS (similar)\nSETTINGS retries = 1;"
+                    "source": "CREATE MODEL IF NOT EXISTS legal_assist(\n  input\n) USING open_ai_provider()\nPROMPT (system \"You are a helpful assistant. You have been provided SEC filings of multiple companies as input. Your task is also to help users with any queries they might have about the SEC filings. Go through all the content and then respond.\",\n  human \"{{input}}\")\nTOOLS (similar)\nSETTINGS retries = 1;"
                 },
                 {
                     "cell_type": "markdown",
@@ -1481,27 +1478,6 @@
                     "metadata": {},
                     "outputs": [],
                     "source": "DROP TABLE pdf_embeddings;"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "TRUNCATE TABLE langdb.models;"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "TRUNCATE TABLE langdb.agents;"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "TRUNCATE TABLE langdb.prompts;"
                 }
             ],
             "metadata": {
@@ -1520,11 +1496,11 @@
             "nbformat": 4,
             "nbformat_minor": 4
         },
-        "last_modified": "2024-07-03T14:23:52+07:00",
+        "last_modified": "2024-07-12T10:35:49+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
-            "Pdf",
+            "PDF",
             "RAG",
             "RAG"
         ]
@@ -1870,7 +1846,7 @@
         "created_at": "2024-07-09T11:07:58+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20Using%20PostgreSQL.ipynb",
         "tags": [
-            "Agent",
+            "POSTGRES",
             "RAG"
         ]
     },
@@ -2582,7 +2558,6 @@
         "created_at": "2024-07-09T10:53:11+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20using%20LangDB.ipynb",
         "tags": [
-            "Agent",
             "RAG"
         ]
     }
