@@ -4,15 +4,13 @@ import nbformat
 import subprocess
 
 GITHUB_REPO_URL = "https://raw.githubusercontent.com/langdb/langdb-samples/main"
-TAGS = ["Agent", "Pdf", "RAG"]
+TAGS = ["Agent", "PDF", "RAG", "POSTGRES"]
 def get_tags_from_title(title, filter_tag):
     tags = []
     for tag in TAGS:
         if tag.lower() in title.lower():
             tags.append(tag)
-    # if tags is empty, default is ["Agent"]
-    if not tags:
-        tags.append("Agent")
+
     if filter_tag:
         tags.append(filter_tag)
     return tags
