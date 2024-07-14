@@ -1006,7 +1006,7 @@
                     "execution_count": null,
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS generate_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
                 },
                 {
                     "cell_type": "code",
@@ -1026,7 +1026,7 @@
                 {
                     "cell_type": "markdown",
                     "metadata": {},
-                    "source": "Use `custom_embed` model to generate embeddings for each chunk and store them into `pdf_embeddings` table.\n\nYou can also use `SPAWN TASK` feature to run this in the background. "
+                    "source": "Use `generate_embed` model to generate embeddings for each chunk and store them into `pdf_embeddings` table.\n\nYou can also use `SPAWN TASK` feature to run this in the background. "
                 },
                 {
                     "cell_type": "code",
@@ -1041,7 +1041,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "SPAWN TASK store_embeddings\n    BEGIN\nINSERT INTO pdf_embeddings\nSELECT p.id, custom_embed(content) FROM pdf_chunks AS p LEFT JOIN pdf_embeddings AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id\nLIMIT 5\nEND\nEVERY 5 SECOND"
+                    "source": "SPAWN TASK store_embeddings\n    BEGIN\nINSERT INTO pdf_embeddings\nSELECT p.id, generate_embed(content) FROM pdf_chunks AS p LEFT JOIN pdf_embeddings AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id\nLIMIT 5\nEND\nEVERY 5 SECOND"
                 },
                 {
                     "cell_type": "code",
@@ -1121,7 +1121,7 @@
                 {
                     "cell_type": "markdown",
                     "metadata": {},
-                    "source": "### Provider Creation"
+                    "source": "### Model Creation"
                 },
                 {
                     "cell_type": "code",
@@ -1136,7 +1136,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL IF NOT EXISTS legal_assist(\n  input\n) USING open_ai_provider()\nPROMPT (system \"You are a helpful assistant. You have been provided SEC filings of multiple companies as input. Your task is also to help users with any queries they might have about the SEC filings. Go through all the content and then respond.\",\n  human \"{{input}}\")\nTOOLS (similar)\nSETTINGS retries = 1;"
+                    "source": "CREATE MODEL IF NOT EXISTS search(\n  input\n) USING open_ai_provider()\nPROMPT (system \"You are a helpful assistant. You have been provided with similar tool to search over the SEC fillings. \n                 Your task is also to help users with any queries they might have about the SEC filings. \n                 Go through all the content and then respond.\",\n  human \"{{input}}\")\nTOOLS (similar)\nSETTINGS retries = 1;"
                 },
                 {
                     "cell_type": "markdown",
@@ -1156,7 +1156,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "SELECT legal_assist('PLEASE NOTE: THERE IS NO PROOF OF CLAIM FORM FOR')"
+                    "source": "SELECT search('PLEASE NOTE: THERE IS NO PROOF OF CLAIM FORM FOR')"
                 },
                 {
                     "cell_type": "markdown",
@@ -1176,7 +1176,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT `chat_agent` (input String) AS\nSELECT legal_assist($input);"
+                    "source": "CREATE AGENT `chat_agent` (input String) AS\nSELECT search($input);"
                 },
                 {
                     "cell_type": "markdown",
@@ -1226,7 +1226,7 @@
             "nbformat": 4,
             "nbformat_minor": 4
         },
-        "last_modified": "2024-07-12T10:35:49+05:30",
+        "last_modified": "2024-07-14T21:17:08+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
