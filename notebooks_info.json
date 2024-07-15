@@ -1006,7 +1006,7 @@
                     "execution_count": null,
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS generate_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS generate_embeddings(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
                 },
                 {
                     "cell_type": "code",
@@ -1041,7 +1041,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "SPAWN TASK store_embeddings\n    BEGIN\nINSERT INTO pdf_embeddings\nSELECT p.id, generate_embed(content) FROM pdf_chunks AS p LEFT JOIN pdf_embeddings AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id\nLIMIT 5\nEND\nEVERY 5 SECOND"
+                    "source": "SPAWN TASK store_embeddings\n    BEGIN\nINSERT INTO pdf_embeddings\nSELECT p.id, generate_embeddings(content) FROM pdf_chunks AS p LEFT JOIN pdf_embeddings AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id\nLIMIT 5\nEND\nEVERY 5 SECOND"
                 },
                 {
                     "cell_type": "code",
@@ -1076,7 +1076,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT similar(query String \"Query to search similar sections in pdf documents\") AS\nWITH tbl AS (\n  SELECT CAST(custom_embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  content, \n  cosineDistance(embeddings, query) AS similarity \nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdf_chunks AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  similarity ASC \n  LIMIT 5\n"
+                    "source": "CREATE AGENT similar(query String \"Query to search similar sections in pdf documents\") AS\nWITH tbl AS (\n  SELECT CAST(generate_embeddings($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  content, \n  cosineDistance(embeddings, query) AS similarity \nFROM \n  pdf_embeddings AS pe \nJOIN \n  pdf_chunks AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  similarity ASC \n  LIMIT 5\n"
                 },
                 {
                     "cell_type": "markdown",
@@ -1136,12 +1136,12 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL IF NOT EXISTS search(\n  input\n) USING open_ai_provider()\nPROMPT (system \"You are a helpful assistant. You have been provided with similar tool to search over the SEC fillings. \n                 Your task is also to help users with any queries they might have about the SEC filings. \n                 Go through all the content and then respond.\",\n  human \"{{input}}\")\nTOOLS (similar)\nSETTINGS retries = 1;"
+                    "source": "CREATE MODEL IF NOT EXISTS search(\n  input\n) USING open_ai_provider()\nPROMPT (system \"You are a helpful assistant. You have been provided with similar tool to search over the SEC fillings. \n                 Your task is also to help users with any queries they might have about the SEC filings. \n                 Go through all the content and then respond.\",\n  human \"{{input}}\")\nTOOLS (\n    similar COMMENT 'Agent to search embeddings of the PDF'\n)\nSETTINGS retries = 1;"
                 },
                 {
                     "cell_type": "markdown",
                     "metadata": {},
-                    "source": "### Model execution\n\nUsing the created model, we can perform `legal_assist()` query that leverages `similar()` tool and responds. \n\nThis can immediately be plugged into the frontends to also provide a chat interface."
+                    "source": "### Model execution\n\nUsing the created model, we can perform `search()` query that leverages `similar()` tool and responds. \n\nThis can immediately be plugged into the frontends to also provide a chat interface."
                 },
                 {
                     "cell_type": "code",
@@ -1161,22 +1161,7 @@
                 {
                     "cell_type": "markdown",
                     "metadata": {},
-                    "source": "### Creating an AGENT to run the Chat Agent\n\nWe can create an AGENT which invokes our required model. We can Chat with the model using this agent."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 14,
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE AGENT `chat_agent` (input String) AS\nSELECT search($input);"
+                    "source": "### Running the Chat Agent\n\nWe can use the model created as chat agent"
                 },
                 {
                     "cell_type": "markdown",
@@ -1188,7 +1173,7 @@
                     "execution_count": 16,
                     "metadata": {},
                     "outputs": [],
-                    "source": "CHAT chat_agent WITH input = 'Hi';"
+                    "source": "CHAT search WITH input = 'Hi';"
                 },
                 {
                     "cell_type": "markdown",
@@ -1226,7 +1211,7 @@
             "nbformat": 4,
             "nbformat_minor": 4
         },
-        "last_modified": "2024-07-14T21:17:08+05:30",
+        "last_modified": "2024-07-15T11:10:37+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
@@ -1356,7 +1341,7 @@
                     "id": "81f1023b",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS generate_embeddings(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
                 },
                 {
                     "cell_type": "code",
@@ -1378,7 +1363,7 @@
                     "cell_type": "markdown",
                     "id": "6c47e390-05cd-4dc8-9379-f14686f60d38",
                     "metadata": {},
-                    "source": "While we can use `custom_embed()` to generate embeddings for each chunk and store them, we can also run the whole process in background using `SPAWN TASK` which essentially creates a cron job."
+                    "source": "While we can use `generate_embeddings()` to generate embeddings for each chunk and store them, we can also run the whole process in background using `SPAWN TASK` which essentially creates a cron job."
                 },
                 {
                     "cell_type": "code",
@@ -1394,7 +1379,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "SPAWN TASK generate_embeddings_cities_postgres\nBEGIN\n    INSERT INTO pdf_embeddings\n    select p.id, custom_embed(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 5 second\nWITH MAX_POOL_SIZE 5;"
+                    "source": "SPAWN TASK generate_embeddings_cities_postgres\nBEGIN\n    INSERT INTO pdf_embeddings\n    select p.id, generate_embeddings(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 5 second\nWITH MAX_POOL_SIZE 5;"
                 },
                 {
                     "cell_type": "markdown",
@@ -1416,7 +1401,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT cities_info_generic_postgres(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(custom_embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  cities_embeddings_postgres AS pe \nJOIN \n  cities_pdf AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'get information about cities';"
+                    "source": "CREATE AGENT cities_info_generic_postgres(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(generate_embeddings($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  cities_embeddings_postgres AS pe \nJOIN \n  cities_pdf AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'get information about cities';"
                 },
                 {
                     "cell_type": "markdown",
@@ -1502,7 +1487,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) USING open_ai_provider(model_name='gpt-4-turbo')\nPROMPT cities_prompt\nTOOLS (query_agent, cities_info_generic)\nSETTINGS retries = 3;"
+                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) USING open_ai_provider(model_name='gpt-4-turbo')\nPROMPT cities_prompt\nTOOLS (\n    query_model COMMENT 'Text-to-SQL Model to query the database', \n    cities_info_generic COMMENT 'Vector Search on Cities Wiki Pages')\nSETTINGS retries = 3;"
                 },
                 {
                     "cell_type": "markdown",
@@ -1553,6 +1538,20 @@
                         }
                     ],
                     "source": "select cities_info_model_postgres('Whats the population of the city which conducted the 1964 Summer Olympics');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "5c6ac19c-31dc-4c12-a5d4-a1e4c4ccc53e",
+                    "metadata": {},
+                    "source": "### Running the Chat Agent\n\nWe can use the model created as chat agent"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "67b40e23-8404-4bbc-8eb3-2443cc997380",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CHAT cities_info_model_postgres"
                 }
             ],
             "metadata": {
@@ -1571,7 +1570,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-11T09:51:55+05:30",
+        "last_modified": "2024-07-15T11:10:37+05:30",
         "created_at": "2024-07-09T11:07:58+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20Using%20PostgreSQL.ipynb",
         "tags": [
@@ -1737,7 +1736,7 @@
                     "id": "a12a9c60",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS generate_embeddings(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
                 },
                 {
                     "cell_type": "code",
@@ -1767,7 +1766,7 @@
                     "id": "9c01c3e3-efdc-42d7-bc2e-a989c68577c3",
                     "metadata": {},
                     "outputs": [],
-                    "source": "SPAWN TASK generate_embeddings\n    BEGIN\nINSERT INTO embeddings_fallback_data\nSELECT p.id, custom_embed(question), p.question \nFROM popqa AS p \nLEFT JOIN embeddings_fallback_data AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id\nLIMIT 10\nEND EVERY 5 second;"
+                    "source": "SPAWN TASK generate_embeddings\n    BEGIN\nINSERT INTO embeddings_fallback_data\nSELECT p.id, generate_embeddings(question), p.question \nFROM popqa AS p \nLEFT JOIN embeddings_fallback_data AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id\nLIMIT 10\nEND EVERY 5 second;"
                 },
                 {
                     "cell_type": "markdown",
@@ -1803,7 +1802,7 @@
                     "id": "f1898f5c-d35e-42e1-ab29-ceaa5a48a133",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE AGENT get_correct_documents(question String) AS \n (with tbl as (\n    select id, content, retrieval_evaluator($question, content) answer from pdf_contents\n)\nselect id, answer, content\nfrom tbl where positionCaseInsensitive(answer, 'yes') > 0)\nCOMMENT 'AGENT to get the relevant document to the question';"
+                    "source": "CREATE AGENT get_correct_documents(question String) AS \n (with tbl as (\n    select id, content, retrieval_evaluator($question, content) answer from pdf_contents\n)\nselect id, answer, content\nfrom tbl where positionCaseInsensitive(answer, 'yes') > 0);"
                 },
                 {
                     "cell_type": "markdown",
@@ -1829,22 +1828,6 @@
                 },
                 {
                     "cell_type": "code",
-                    "execution_count": 16,
-                    "id": "fed4274a-7701-4c26-90b3-5750e993374a",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE AGENT evaluator(question String, answer String, score String) AS\nSELECT evaluator($question, $answer, $score);"
-                },
-                {
-                    "cell_type": "code",
                     "execution_count": 17,
                     "id": "9cd4400a-2f6f-49de-822d-391a7ae8022b",
                     "metadata": {},
@@ -1857,23 +1840,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT agent_fallback_data(question String \"Query to search question\") AS\n(WITH tbl AS (\n  SELECT CAST(custom_embed($question) AS `Array`(`Float32`)) AS question_embed\n)\nSELECT cosineDistance(embeddings, question_embed) AS similarity, p.id, p.possible_answers\nFROM embeddings_fallback_data AS pe\nJOIN popqa AS p ON p.id = pe.id\nCROSS JOIN tbl\nORDER BY similarity \nLIMIT 10)\nCOMMENT 'Returns top 10 results for the given query with similarity, id, and possible_answers';"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 18,
-                    "id": "5ece7b15-e47f-4492-90a3-a9d76e5e7e11",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE AGENT retrieval_evaluator(question String, document String) AS\n(SELECT retrieval_evaluator($question, $document))\nCOMMENT 'Agent for evaluating the relevancy of an question and document';"
+                    "source": "CREATE AGENT agent_fallback_data(question String \"Query to search question\") AS\n(WITH tbl AS (\n  SELECT CAST(generate_embeddings($question) AS `Array`(`Float32`)) AS question_embed\n)\nSELECT cosineDistance(embeddings, question_embed) AS similarity, p.id, p.possible_answers\nFROM embeddings_fallback_data AS pe\nJOIN popqa AS p ON p.id = pe.id\nCROSS JOIN tbl\nORDER BY similarity \nLIMIT 10)"
                 },
                 {
                     "cell_type": "code",
@@ -1889,23 +1856,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL IF NOT EXISTS fallback_model (\n  input\n) USING open_ai_provider()\nPROMPT (system \"Given a question, find the document relevant to the question and return possible answers and similarity scores. \nQuestion: {{input}}\")\nTOOLS (agent_fallback_data)\nSETTINGS retries = 1;"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 44,
-                    "id": "145e60f9-624b-4963-bfa9-5e851c13c042",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE AGENT fallback_model(question String) AS\n(SELECT fallback_model($question))\nCOMMENT 'Agent for searching fallback data source';"
+                    "source": "CREATE MODEL IF NOT EXISTS fallback_model (\n  input\n) USING open_ai_provider()\nPROMPT (system \"Given a question, find the document relevant to the question and return possible answers and similarity scores. \nQuestion: {{input}}\")\nTOOLS (agent_fallback_data COMMENT 'Returns top 10 results for the given query with similarity, id, and possible_answers')\nSETTINGS retries = 1;"
                 },
                 {
                     "cell_type": "markdown",
@@ -1927,7 +1878,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL main(\n    question\n) USING open_ai_provider()\nPROMPT (system \"Given a question, try to find a relevant answer based on relavent documents. \nRelevant documents can be fetched with get_correct_documents tool.\nIf you cannot get any document, try to use the fallback data source.\nFallback data source can only be used if the main data source doesn't provide a relevant answer.\nYou must verify the answer with the evaluator. If the evaluator returns 'no', do not provide an answer to the user.\nquestion: {{question}}\")\nTOOLS (get_correct_documents, fallback_model, evaluator)\nSETTINGS retries = 1;"
+                    "source": "CREATE MODEL main_crag(\n    question\n) USING open_ai_provider()\nPROMPT (system \"Given a question, try to find a relevant answer based on relavent documents. \nRelevant documents can be fetched with get_correct_documents tool.\nIf you cannot get any document, try to use the fallback data source.\nFallback data source can only be used if the main data source doesn't provide a relevant answer.\nYou must verify the answer with the evaluator. If the evaluator returns 'no', do not provide an answer to the user.\nquestion: {{question}}\")\nTOOLS (get_correct_documents COMMENT 'AGENT to get the relevant document to the question',\n    fallback_model COMMENT 'Model for searching fallback data source',\n    evaluator COMMENT 'Model for verifying the answer')\nSETTINGS retries = 1;"
                 },
                 {
                     "cell_type": "code",
@@ -1944,6 +1895,20 @@
                         }
                     ],
                     "source": "SELECT main('Who written hamlet?')"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "c85c2d0a-0b76-4abf-8e39-c4ae9c5ba703",
+                    "metadata": {},
+                    "source": "### Running the Chat Agent\n\nWe can use the model created as chat agent"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "8262e82a-8552-45b9-8889-2ef8916808dc",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CHAT main_crag;"
                 }
             ],
             "metadata": {
@@ -1962,7 +1927,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-03T14:23:52+07:00",
+        "last_modified": "2024-07-15T11:10:37+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/CRAG.ipynb",
         "tags": [
@@ -2089,7 +2054,7 @@
                     "id": "81f1023b",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS custom_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS generate_embeddings(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
                 },
                 {
                     "cell_type": "code",
@@ -2111,7 +2076,7 @@
                     "cell_type": "markdown",
                     "id": "6c47e390-05cd-4dc8-9379-f14686f60d38",
                     "metadata": {},
-                    "source": "While we can use `custom_embed()` to generate embeddings for each chunk and store them, we can also run the whole process in background using `SPAWN TASK` which essentially creates a cron job."
+                    "source": "While we can use `generate_embeddings()` to generate embeddings for each chunk and store them, we can also run the whole process in background using `SPAWN TASK` which essentially creates a cron job."
                 },
                 {
                     "cell_type": "code",
@@ -2127,7 +2092,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "SPAWN TASK generate_embeddings_cities\nBEGIN\n    INSERT INTO cities_embeddings\n    select p.id, custom_embed(content) from cities_pdf as p LEFT JOIN cities_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 5 second\nWITH MAX_POOL_SIZE 5;"
+                    "source": "SPAWN TASK generate_embeddings_cities\nBEGIN\n    INSERT INTO cities_embeddings\n    select p.id, generate_embeddings(content) from cities_pdf as p LEFT JOIN cities_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 5 second\nWITH MAX_POOL_SIZE 5;"
                 },
                 {
                     "cell_type": "markdown",
@@ -2149,7 +2114,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(custom_embed($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  cities_embeddings AS pe \nJOIN \n  cities_pdf AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'get information about cities';"
+                    "source": "CREATE AGENT cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(generate_embeddings($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  cities_embeddings AS pe \nJOIN \n  cities_pdf AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5);"
                 },
                 {
                     "cell_type": "markdown",
@@ -2213,7 +2178,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) USING open_ai_provider(model_name='gpt-4-turbo')\nPROMPT cities_prompt\nTOOLS (query_agent, cities_info_generic)\nSETTINGS retries = 3;"
+                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) USING open_ai_provider(model_name='gpt-4-turbo')\nPROMPT cities_prompt\nTOOLS (\n    query_model COMMENT 'Text-to-SQL Model to query the database', \n    cities_info_generic COMMENT 'Vector Search on Cities Wiki Pages')\nSETTINGS retries = 3;"
                 },
                 {
                     "cell_type": "markdown",
@@ -2264,6 +2229,20 @@
                         }
                     ],
                     "source": "select cities_info_model('Whats the population of the city which conducted the 1964 Summer Olympics');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "921f9434-ebf1-4689-a1b5-f6137f6d42af",
+                    "metadata": {},
+                    "source": "### Running the Chat Agent\n\nWe can use the model created as chat agent"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "d3bc0349-2341-463d-b777-49caa9c02931",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CHAT cities_info_model"
                 }
             ],
             "metadata": {
@@ -2282,7 +2261,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-11T09:51:55+05:30",
+        "last_modified": "2024-07-15T11:10:37+05:30",
         "created_at": "2024-07-09T10:53:11+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20using%20LangDB.ipynb",
         "tags": [
