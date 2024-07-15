@@ -1137,18 +1137,10 @@
                 },
                 {
                     "cell_type": "code",
-                    "execution_count": 13,
+                    "execution_count": null,
                     "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": "I found some similar sections in pdf documents related to \"PROOF OF CLAIM FORM.\" Here are a few of them:\n\n1. Total comprehensive income mentioned in a Form 10-K filing for Apple Inc.\n2. Information about internal controls over financial reporting in a financial statement.\n3. Report of Independent Registered Public Accounting Firm's opinion on financial statements for Apple Inc.\n4. Mention of payment card industry data security standards in a Form 10-K filing for Apple Inc.\n5. Details about a legal case involving Apple Inc. and Epic regarding App Store Review Guidelines.\n\nLet me know if you need more information on any of these sections."
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "SELECT search('PLEASE NOTE: THERE IS NO PROOF OF CLAIM FORM FOR')"
+                    "outputs": [],
+                    "source": "SELECT search('Earnings of Apple in 2022')"
                 },
                 {
                     "cell_type": "markdown",
@@ -1203,7 +1195,7 @@
             "nbformat": 4,
             "nbformat_minor": 4
         },
-        "last_modified": "2024-07-15T11:10:37+05:30",
+        "last_modified": "2024-07-15T11:34:13+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
