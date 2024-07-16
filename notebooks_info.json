@@ -774,7 +774,7 @@
                     "id": "d8c361ac-b6d0-426b-9e20-312e905e27a9",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE MODEL query_model(\n    input\n) USING open_ai_provider(model_name = 'gpt-4o')\nPROMPT query_prompt\nTOOLS (\n    get_semantics COMMENT 'Tool to get the schemas of the tables in the database',\n    langdb_raw_query 'Tool to execute SQL query over the database',\n    query_validator 'Model to Validate the generated SQL query'\n)\nSETTINGS retries = 3;"
+                    "source": "CREATE MODEL query_model(\n    input\n) USING open_ai_provider(model_name = 'gpt-4o')\nPROMPT query_prompt\nTOOLS (\n    get_semantics COMMENT 'Tool to get the schemas of the tables in the database',\n    langdb_raw_query COMMENT 'Tool to execute SQL query over the database',\n    query_validator COMMENT 'Model to Validate the generated SQL query'\n)\nSETTINGS retries = 3;"
                 },
                 {
                     "cell_type": "markdown",
@@ -807,7 +807,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-15T11:20:47+05:30",
+        "last_modified": "2024-07-16T19:11:50+05:30",
         "created_at": "2024-07-11T09:40:25+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Query%20Agent.ipynb",
         "tags": [
