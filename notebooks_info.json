@@ -1033,7 +1033,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "SPAWN TASK store_embeddings\n    BEGIN\nINSERT INTO pdf_embeddings\nSELECT p.id, generate_embeddings(content) FROM pdf_chunks AS p LEFT JOIN pdf_embeddings AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id\nLIMIT 5\nEND\nEVERY 5 SECOND"
+                    "source": "SPAWN TASK store_embeddings\n    BEGIN\nINSERT INTO pdf_embeddings\nSELECT p.id, generate_embeddings(content) FROM pdf_chunks AS p LEFT JOIN pdf_embeddings AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id\nLIMIT 5\nEND\nEVERY 1 MINUTE\nWITH MAX_POOL_SIZE 5;"
                 },
                 {
                     "cell_type": "code",
@@ -1195,7 +1195,7 @@
             "nbformat": 4,
             "nbformat_minor": 4
         },
-        "last_modified": "2024-07-15T11:34:13+05:30",
+        "last_modified": "2024-07-16T21:24:39+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
@@ -1287,7 +1287,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE TABLE cities_pdf (\n  `id` UUID DEFAULT generateUUIDv4(),\n  `content` String, \n  `metadata` String, \n  `city` String\n) engine = MergeTree\norder by (id, content);"
+                    "source": "CREATE TABLE cities_pdf_postgres (\n  `id` UUID DEFAULT generateUUIDv4(),\n  `content` String, \n  `metadata` String, \n  `city` String\n) engine = MergeTree\norder by (id, content);"
                 },
                 {
                     "cell_type": "code",
@@ -1295,7 +1295,7 @@
                     "id": "d1f1e71b-3e0a-4907-9f60-c0b951959592",
                     "metadata": {},
                     "outputs": [],
-                    "source": "INSERT INTO pdfs(content, metadata, city) \nSELECT content, metadata, JSONExtractString(metadata,'city')\nFROM load_pdf_text((SELECT link, city from pdf_links));"
+                    "source": "INSERT INTO cities_pdf_postgres(content, metadata, city) \nSELECT content, metadata, JSONExtractString(metadata,'city')\nFROM load_pdf_text((SELECT link, city from cities_links_postgres));"
                 },
                 {
                     "cell_type": "markdown",
@@ -1363,7 +1363,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "SPAWN TASK generate_embeddings_cities_postgres\nBEGIN\n    INSERT INTO pdf_embeddings\n    select p.id, generate_embeddings(content) from pdfs as p LEFT JOIN pdf_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 5 second\nWITH MAX_POOL_SIZE 5;"
+                    "source": "SPAWN TASK generate_embeddings_cities_postgres\nBEGIN\n    INSERT INTO cities_embeddings\n    select p.id, generate_embeddings(content) from cities_pdf_postgres as p LEFT JOIN cities_embeddings_postgres as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 1 MINUTE\nWITH MAX_POOL_SIZE 5;"
                 },
                 {
                     "cell_type": "markdown",
@@ -1385,7 +1385,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT cities_info_generic_postgres(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(generate_embeddings($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  cities_embeddings_postgres AS pe \nJOIN \n  cities_pdf AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5)\nCOMMENT 'get information about cities';"
+                    "source": "CREATE AGENT cities_info_generic_postgres(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(generate_embeddings($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  cities_embeddings_postgres AS pe \nJOIN \n  cities_pdf_postgres AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5);"
                 },
                 {
                     "cell_type": "markdown",
@@ -1449,7 +1449,7 @@
                     "id": "c0877078-ed54-43d2-9daa-0c720ddab3ed",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE PROMPT cities_prompt (\nsystem \"You are a master data agent specializing in providing information about cities. Your task is to answer user questions about cities using the available tools and data sources.\n\nTools at your disposal:\n1. query_agent(table, question): Use this to retrieve data from the specified table in the database. For city-related queries, use the 'cities' table, which contains information such as population, latitude, longitude, and country.\n2. cities_info_generic(question): Use this for general information about cities using similarity search based on cosine distance.\n\nGuidelines for tool usage:\n- query_agent: Prefer this tool when specific data points (population, location, country) are needed or when comparing multiple cities. Always specify 'cities' as the table name.\n- cities_info_generic: Use this when the city is not known, or when seeking general information not available in the database.\n\nAlways follow these steps:\n1. Analyze the question to determine the best tool(s) to use.\n2. Use the chosen tool(s) to gather relevant information.\n3. Synthesize the gathered information to provide a comprehensive answer.\n\nOutput format:\nQuestion: [Restate the input question]\nThought: [Your reasoning about how to approach the question]\nAction: [The tool you decide to use]\nAction Input: [For query_agent: {'table': 'cities', 'question': 'Your specific question'}, For cities_info_generic: 'Your question']\nObservation: [The result returned by the tool]\n... (Repeat Thought/Action/Action Input/Observation as needed)\nThought: [Final reasoning about how to answer the question based on all gathered information]\nFinal Answer: [Comprehensive answer to the question, including:\n  - Direct response to the question\n  - Supporting data from the tools used\n  - If query_agent was used, include the full SQL query\n  - Any relevant additional context or explanations]\n\nRemember:\n- Always use the tools to gather information; do not rely on prior knowledge.\n- Be thorough in your analysis and provide detailed, informative answers.\n- When using query_agent, always specify 'cities' as the table name and formulate a clear, specific question for the SQL query. The output of query_agent would be SQLQuery and SQLAnswer.\n- If the question is ambiguous, state your assumptions clearly in the final answer.\n\nBegin!\nQuestion: {{input}}\nThought: Let's start by analyzing the question and determining the best approach to answer it.\"\n);"
+                    "source": "CREATE PROMPT cities_prompt (\nsystem \"You are a master data agent specializing in providing information about cities. Your task is to answer user questions about cities using the available tools and data sources.\n\nTools at your disposal:\n1. query_model(table, question): Use this to retrieve data from the specified table in the database. For city-related queries, use the 'cities' table, which contains information such as population, latitude, longitude, and country.\n2. cities_info_generic(question): Use this for general information about cities using similarity search based on cosine distance.\n\nGuidelines for tool usage:\n- query_model: Prefer this tool when specific data points (population, location, country) are needed or when comparing multiple cities. Make your intent clear of what you want to search\n- cities_info_generic: Use this when the city is not known, or when seeking general information not available in the database.\n\nAlways follow these steps:\n1. Analyze the question to determine the best tool(s) to use.\n2. Use the chosen tool(s) to gather relevant information.\n3. Synthesize the gathered information to provide a comprehensive answer.\n\nOutput format:\nQuestion: [Restate the input question]\nThought: [Your reasoning about how to approach the question]\nAction: [The tool you decide to use]\nAction Input: [For query_model: {'question': 'Your specific question'}, For cities_info_generic: 'Your question']\nObservation: [The result returned by the tool]\n... (Repeat Thought/Action/Action Input/Observation as needed)\nThought: [Final reasoning about how to answer the question based on all gathered information]\nFinal Answer: [Comprehensive answer to the question, including:\n  - Direct response to the question\n  - Supporting data from the tools used\n  - If query_model was used, include the full SQL query\n  - Any relevant additional context or explanations]\n\nRemember:\n- Always use the tools to gather information; do not rely on prior knowledge.\n- Be thorough in your analysis and provide detailed, informative answers.\n- When using query_model, always formulate a clear, specific question for the SQL query. The output of query_agent would be SQLQuery and SQLAnswer.\n- If the question is ambiguous, state your assumptions clearly in the final answer.\n\nBegin!\nQuestion: {{input}}\nThought: Let's start by analyzing the question and determining the best approach to answer it.\"\n);"
                 },
                 {
                     "cell_type": "markdown",
@@ -1471,7 +1471,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) USING open_ai_provider(model_name='gpt-4-turbo')\nPROMPT cities_prompt\nTOOLS (\n    query_model COMMENT 'Text-to-SQL Model to query the database', \n    cities_info_generic COMMENT 'Vector Search on Cities Wiki Pages')\nSETTINGS retries = 3;"
+                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model_postgres( \n    input\n) USING open_ai_provider(model_name='gpt-4o')\nPROMPT cities_prompt\nTOOLS (\n    query_model COMMENT 'Text-to-SQL Model to query the database', \n    cities_info_generic_postgres COMMENT 'Vector Search on Cities Wiki Pages')\nSETTINGS retries = 3;"
                 },
                 {
                     "cell_type": "markdown",
@@ -1554,7 +1554,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-15T11:10:37+05:30",
+        "last_modified": "2024-07-17T23:08:35+05:30",
         "created_at": "2024-07-09T11:07:58+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20Using%20PostgreSQL.ipynb",
         "tags": [
@@ -1750,7 +1750,7 @@
                     "id": "9c01c3e3-efdc-42d7-bc2e-a989c68577c3",
                     "metadata": {},
                     "outputs": [],
-                    "source": "SPAWN TASK generate_embeddings\n    BEGIN\nINSERT INTO embeddings_fallback_data\nSELECT p.id, generate_embeddings(question), p.question \nFROM popqa AS p \nLEFT JOIN embeddings_fallback_data AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id\nLIMIT 10\nEND EVERY 5 second;"
+                    "source": "SPAWN TASK generate_embeddings\n    BEGIN\nINSERT INTO embeddings_fallback_data\nSELECT p.id, generate_embeddings(question), p.question \nFROM popqa AS p \nLEFT JOIN embeddings_fallback_data AS pe ON p.id = pe.id\nWHERE p.id != pe.id\nORDER BY p.id\nLIMIT 10\nEND \nEVERY 1 MINUTE\nWITH MAX_POOL_SIZE 5;"
                 },
                 {
                     "cell_type": "markdown",
@@ -1911,7 +1911,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-15T11:10:37+05:30",
+        "last_modified": "2024-07-16T21:24:39+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/CRAG.ipynb",
         "tags": [
@@ -2076,7 +2076,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "SPAWN TASK generate_embeddings_cities\nBEGIN\n    INSERT INTO cities_embeddings\n    select p.id, generate_embeddings(content) from cities_pdf as p LEFT JOIN cities_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 5 second\nWITH MAX_POOL_SIZE 5;"
+                    "source": "SPAWN TASK generate_embeddings_cities\nBEGIN\n    INSERT INTO cities_embeddings\n    select p.id, generate_embeddings(content) from cities_pdf as p LEFT JOIN cities_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 1 MINUTE\nWITH MAX_POOL_SIZE 5;"
                 },
                 {
                     "cell_type": "markdown",
@@ -2140,7 +2140,7 @@
                     "id": "c0877078-ed54-43d2-9daa-0c720ddab3ed",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE PROMPT cities_prompt (\nsystem \"You are a master data agent specializing in providing information about cities. Your task is to answer user questions about cities using the available tools and data sources.\n\nTools at your disposal:\n1. query_agent(table, question): Use this to retrieve data from the specified table in the database. For city-related queries, use the 'cities' table, which contains information such as population, latitude, longitude, and country.\n2. cities_info_generic(question): Use this for general information about cities using similarity search based on cosine distance.\n\nGuidelines for tool usage:\n- query_agent: Prefer this tool when specific data points (population, location, country) are needed or when comparing multiple cities. Always specify 'cities' as the table name.\n- cities_info_generic: Use this when the city is not known, or when seeking general information not available in the database.\n\nAlways follow these steps:\n1. Analyze the question to determine the best tool(s) to use.\n2. Use the chosen tool(s) to gather relevant information.\n3. Synthesize the gathered information to provide a comprehensive answer.\n\nOutput format:\nQuestion: [Restate the input question]\nThought: [Your reasoning about how to approach the question]\nAction: [The tool you decide to use]\nAction Input: [For query_agent: {'table': 'cities', 'question': 'Your specific question'}, For cities_info_generic: 'Your question']\nObservation: [The result returned by the tool]\n... (Repeat Thought/Action/Action Input/Observation as needed)\nThought: [Final reasoning about how to answer the question based on all gathered information]\nFinal Answer: [Comprehensive answer to the question, including:\n  - Direct response to the question\n  - Supporting data from the tools used\n  - If query_agent was used, include the full SQL query\n  - Any relevant additional context or explanations]\n\nRemember:\n- Always use the tools to gather information; do not rely on prior knowledge.\n- Be thorough in your analysis and provide detailed, informative answers.\n- When using query_agent, always specify 'cities' as the table name and formulate a clear, specific question for the SQL query. The output of query_agent would be SQLQuery and SQLAnswer.\n- If the question is ambiguous, state your assumptions clearly in the final answer.\n\nBegin!\nQuestion: {{input}}\nThought: Let's start by analyzing the question and determining the best approach to answer it.\"\n);"
+                    "source": "CREATE PROMPT cities_prompt (\nsystem \"You are a master data agent specializing in providing information about cities. Your task is to answer user questions about cities using the available tools and data sources.\n\nTools at your disposal:\n1. query_model(table, question): Use this to retrieve data from the specified table in the database. For city-related queries, use the 'cities' table, which contains information such as population, latitude, longitude, and country.\n2. cities_info_generic(question): Use this for general information about cities using similarity search based on cosine distance.\n\nGuidelines for tool usage:\n- query_model: Prefer this tool when specific data points (population, location, country) are needed or when comparing multiple cities. Make your intent clear of what you want to search\n- cities_info_generic: Use this when the city is not known, or when seeking general information not available in the database.\n\nAlways follow these steps:\n1. Analyze the question to determine the best tool(s) to use.\n2. Use the chosen tool(s) to gather relevant information.\n3. Synthesize the gathered information to provide a comprehensive answer.\n\nOutput format:\nQuestion: [Restate the input question]\nThought: [Your reasoning about how to approach the question]\nAction: [The tool you decide to use]\nAction Input: [For query_model: {'question': 'Your specific question'}, For cities_info_generic: 'Your question']\nObservation: [The result returned by the tool]\n... (Repeat Thought/Action/Action Input/Observation as needed)\nThought: [Final reasoning about how to answer the question based on all gathered information]\nFinal Answer: [Comprehensive answer to the question, including:\n  - Direct response to the question\n  - Supporting data from the tools used\n  - If query_model was used, include the full SQL query\n  - Any relevant additional context or explanations]\n\nRemember:\n- Always use the tools to gather information; do not rely on prior knowledge.\n- Be thorough in your analysis and provide detailed, informative answers.\n- When using query_model, always formulate a clear, specific question for the SQL query. The output of query_agent would be SQLQuery and SQLAnswer.\n- If the question is ambiguous, state your assumptions clearly in the final answer.\n\nBegin!\nQuestion: {{input}}\nThought: Let's start by analyzing the question and determining the best approach to answer it.\"\n);"
                 },
                 {
                     "cell_type": "markdown",
@@ -2162,7 +2162,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) USING open_ai_provider(model_name='gpt-4-turbo')\nPROMPT cities_prompt\nTOOLS (\n    query_model COMMENT 'Text-to-SQL Model to query the database', \n    cities_info_generic COMMENT 'Vector Search on Cities Wiki Pages')\nSETTINGS retries = 3;"
+                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) USING open_ai_provider(model_name='gpt-4o')\nPROMPT cities_prompt\nTOOLS (\n    query_model COMMENT 'Text-to-SQL Model to query the database', \n    cities_info_generic COMMENT 'Vector Search on Cities Wiki Pages')\nSETTINGS retries = 3;"
                 },
                 {
                     "cell_type": "markdown",
@@ -2245,7 +2245,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-15T11:10:37+05:30",
+        "last_modified": "2024-07-17T23:08:35+05:30",
         "created_at": "2024-07-09T10:53:11+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20using%20LangDB.ipynb",
         "tags": [
