@@ -7,7 +7,7 @@
                     "cell_type": "markdown",
                     "id": "7e549dc8-f6fb-4e4b-a65c-4b3b8898dddf",
                     "metadata": {},
-                    "source": "# Sentiment Analysis using LangDB and LLMs - Part 2\n\nThis is a  continuation to the post [here](https://langdb.ai/docs/getting_started/sentiment-1/). As discussed in the previous section, we will implement another approach in this example. \n\n**Approach**\n- Send batch of 10 rows at a time leveraging `pretty_print()` function.\n- Instruct LLM to lag out specific extreme reviews that deviate too much for a product in a response.\n- Create an `Agent` for accessing reviews based on id.\n"
+                    "source": "# Sentiment Analysis using LangDB and LLMs - Part 2\n\nThis is a  continuation to the post [here](https://langdb.ai/docs/getting_started/sentiment-1/). As discussed in the previous section, we will implement another approach in this example. \n\n**Approach**\n- Send batch of 10 rows at a time leveraging `pretty_print()` function.\n- Instruct LLM to lag out specific extreme reviews that deviate too much for a product in a response.\n- Create an `View` for accessing reviews based on id.\n"
                 },
                 {
                     "cell_type": "code",
@@ -245,7 +245,7 @@
                     "cell_type": "markdown",
                     "id": "d79154f7-9c5f-4a75-adcd-91e7c31ee703",
                     "metadata": {},
-                    "source": "Using the above query lets create an `agent` that returns avg sentiment based on a product id"
+                    "source": "Using the above query lets create an `View` that returns avg sentiment based on a product id"
                 },
                 {
                     "cell_type": "code",
@@ -261,7 +261,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT product_sentiment (product_id Int) AS \nSELECT cr.review_id as review_id, p.product_id as product_id, p.product_name as product_name, avg(sentiment) as avg_sentiment\nFROM customer_reviews as cr \nJOIN products as p on p.product_id = cr.product_id\nJOIN (\n    SELECT\n        JSONExtractInt(element, 'sentiment') AS sentiment,\n        JSONExtractBool(element, 'anomaly') AS anomaly,\n        JSONExtractInt(element, 'review_id') AS review_id\n    FROM\n    (\n        SELECT batch_id, arrayJoin(JSONExtractArrayRaw(response)) AS element\n        FROM calculated_review_jsons as crj \n    ) \n) crj on crj.review_id = cr.review_id\nWHERE p.product_id = $product_id\ngroup by cr.review_id, p.product_id, p.product_name"
+                    "source": "CREATE VIEW product_sentiment (product_id Int) AS \nSELECT cr.review_id as review_id, p.product_id as product_id, p.product_name as product_name, avg(sentiment) as avg_sentiment\nFROM customer_reviews as cr \nJOIN products as p on p.product_id = cr.product_id\nJOIN (\n    SELECT\n        JSONExtractInt(element, 'sentiment') AS sentiment,\n        JSONExtractBool(element, 'anomaly') AS anomaly,\n        JSONExtractInt(element, 'review_id') AS review_id\n    FROM\n    (\n        SELECT batch_id, arrayJoin(JSONExtractArrayRaw(response)) AS element\n        FROM calculated_review_jsons as crj \n    ) \n) crj on crj.review_id = cr.review_id\nWHERE p.product_id = $product_id\ngroup by cr.review_id, p.product_id, p.product_name"
                 },
                 {
                     "cell_type": "code",
@@ -302,7 +302,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-18T12:57:05+05:30",
+        "last_modified": "2024-07-18T13:04:20+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Sentiment%20Analysis%20Part%202.ipynb",
         "tags": [
@@ -507,7 +507,7 @@
                     "cell_type": "markdown",
                     "id": "6c9cef3b-049b-4779-a31e-bed874dafc9e",
                     "metadata": {},
-                    "source": "## Why is this a big deal ?\n\nWell you might be thinking sentiment analysis has been around for ages and LLMs can be extremely slow for the purpose. So let's make this an interesting example. So far even though it worked great, we are only passing one row at a time which will translate into many number of API calls and too much slowness.\n\n**New Approach**\n- Send batch of 10 rows at a time leveraging `pretty_print()` function.\n- Store intermediate results and create an `Agent` for accessing averages so LLM can have a history of deviations\n- Instruct LLM to lag out specific extreme reviews that deviate too much for a product in a response.\n- Meanwhile also calculate the review.\n- Lets also generate reasonable sized data to get some interesting insights.\n\nModels will keep getting better in the AI world and LangDB gives you a way to dynamically combine RAG and models in a easy way to create many exciting applications.\n\nAs this post has become already too long, lets continue this in a separate post (Part 2). \n\n"
+                    "source": "## Why is this a big deal ?\n\nWell you might be thinking sentiment analysis has been around for ages and LLMs can be extremely slow for the purpose. So let's make this an interesting example. So far even though it worked great, we are only passing one row at a time which will translate into many number of API calls and too much slowness.\n\n**New Approach**\n- Send batch of 10 rows at a time leveraging `pretty_print()` function.\n- Store intermediate results and create an `View` for accessing averages so LLM can have a history of deviations\n- Instruct LLM to lag out specific extreme reviews that deviate too much for a product in a response.\n- Meanwhile also calculate the review.\n- Lets also generate reasonable sized data to get some interesting insights.\n\nModels will keep getting better in the AI world and LangDB gives you a way to dynamically combine RAG and models in a easy way to create many exciting applications.\n\nAs this post has become already too long, lets continue this in a separate post (Part 2). \n\n"
                 },
                 {
                     "cell_type": "code",
@@ -534,7 +534,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-18T12:57:05+05:30",
+        "last_modified": "2024-07-18T13:04:20+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Sentiment%20Analysis%20Part%201.ipynb",
         "tags": [
@@ -688,7 +688,7 @@
                     "cell_type": "markdown",
                     "id": "d024b21c-9cf9-4ca8-816c-727ea7bdccf1",
                     "metadata": {},
-                    "source": "# Query Agent\n\nThe Query Agent is an advanced tool designed to generate and execute Clickhouse SQL queries based on natural language questions. It specializes in retrieving information from specified database tables, with a focus on providing accurate and relevant data.\n\nIn this sample we will be creating the `QUERY AGENT`"
+                    "source": "# Query Agent\n\nThe Query Agent is an advanced tool designed to generate and execute Clickhouse SQL queries based on natural language questions. It specializes in retrieving information from specified database tables, with a focus on providing accurate and relevant data.\n"
                 },
                 {
                     "cell_type": "markdown",
@@ -710,7 +710,7 @@
                     "cell_type": "markdown",
                     "id": "b34fce22-6269-4d72-bbf0-1b92c850ee2c",
                     "metadata": {},
-                    "source": "## Creating Tools required for Query Agent"
+                    "source": "## Creating Tools required for Query Model"
                 },
                 {
                     "cell_type": "markdown",
@@ -724,13 +724,13 @@
                     "id": "f6f77357-e0a0-4c4c-a4b4-0b8eab54cb03",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE AGENT get_semantics() AS \n(SELECT * FROM semantics());"
+                    "source": "CREATE VIEW get_semantics() AS \n(SELECT * FROM semantics());"
                 },
                 {
                     "cell_type": "markdown",
                     "id": "f4798f9f-71be-467a-8b90-5b44b0bbb429",
                     "metadata": {},
-                    "source": "### Query Validator\nThis model validates the SQL query generated by the `query agent` before it gets executed."
+                    "source": "### Query Validator\nThis model validates the SQL query generated by the `query model` before it gets executed."
                 },
                 {
                     "cell_type": "code",
@@ -807,7 +807,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-18T12:57:05+05:30",
+        "last_modified": "2024-07-18T13:04:20+05:30",
         "created_at": "2024-07-11T09:40:25+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Query%20Agent.ipynb",
         "tags": [
@@ -907,7 +907,7 @@
                 {
                     "cell_type": "markdown",
                     "metadata": {},
-                    "source": "# RAG powered by LangDB\n\nLangDB aims to bridge the gap between data and AI world by running them alongside. You can create an entire LangDB experience just using SQL commands all the way from extraction to creating a chat agent. \n\nThis sample demonstrates the following:\n\n- Extract data from PDF using `load_pdf_text` command.\n- Create a RAG function that leverages vector search easily using `Agent`\n- Create a LangDB `model` that connects to `OpenAI` APIs.\n- Chat with a LangDB model in natural language using `CHAT` command."
+                    "source": "# RAG powered by LangDB\n\nLangDB aims to bridge the gap between data and AI world by running them alongside. You can create an entire LangDB experience just using SQL commands all the way from extraction to creating a chat agent. \n\nThis sample demonstrates the following:\n\n- Extract data from PDF using `load_pdf_text` command.\n- Create a RAG function that leverages vector search easily using `View`\n- Create a LangDB `model` that connects to `OpenAI` APIs.\n- Chat with a LangDB model in natural language using `CHAT` command."
                 },
                 {
                     "cell_type": "markdown",
@@ -1053,7 +1053,7 @@
                 {
                     "cell_type": "markdown",
                     "metadata": {},
-                    "source": "### Vector Search\n\n`Agents` let you create access endpoints that can be used both for API consumption as well as RAG inputs for LLMs.\n\nAgents can be used to perform chaining of different models, or tools (which execute raw queries) to create a pipeline capable of handling complex tasks.\n                                                                                                    \nHere we are creating an agent named `similar()` to perform a vector search against similar chunks to feed into our LLM model."
+                    "source": "### Vector Search\n\n`View` let you create access endpoints that can be used both for API consumption as well as RAG inputs for LLMs.\n\n                                                                                                    \nHere we are creating a view named `similar()` to perform a vector search against similar chunks to feed into our LLM model."
                 },
                 {
                     "cell_type": "code",
@@ -1128,7 +1128,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL IF NOT EXISTS search(\n  input\n) USING open_ai_provider()\nPROMPT (system \"You are a helpful assistant. You have been provided with similar tool to search over the SEC fillings. \n                 Your task is also to help users with any queries they might have about the SEC filings. \n                 Go through all the content and then respond.\",\n  human \"{{input}}\")\nTOOLS (\n    similar COMMENT 'Agent to search embeddings of the PDF'\n)\nSETTINGS retries = 1;"
+                    "source": "CREATE MODEL IF NOT EXISTS search(\n  input\n) USING open_ai_provider()\nPROMPT (system \"You are a helpful assistant. You have been provided with similar tool to search over the SEC fillings. \n                 Your task is also to help users with any queries they might have about the SEC filings. \n                 Go through all the content and then respond.\",\n  human \"{{input}}\")\nTOOLS (\n    similar COMMENT 'View to search embeddings of the PDF'\n)\nSETTINGS retries = 1;"
                 },
                 {
                     "cell_type": "markdown",
@@ -1195,7 +1195,7 @@
             "nbformat": 4,
             "nbformat_minor": 4
         },
-        "last_modified": "2024-07-18T12:57:05+05:30",
+        "last_modified": "2024-07-18T13:04:20+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
@@ -1300,9 +1300,7 @@
                 {
                     "cell_type": "markdown",
                     "id": "fdb45e72",
-                    "metadata": {
-                        "jp-MarkdownHeadingCollapsed": true
-                    },
+                    "metadata": {},
                     "source": "### Using Provider\n\nWe will be reusing the `open_ai_provider` we created in [`Using Providers`](Using%20Providers.ipynb).\n\nIf you haven't created one yet, create one with the following command:"
                 },
                 {
@@ -1369,7 +1367,7 @@
                     "cell_type": "markdown",
                     "id": "7ee88a0c-96ca-4177-bcc9-b11176e3224f",
                     "metadata": {},
-                    "source": "## AGENT Creation\nFirst, we create agent which utilize vector search to find relevant chunks. While the cities_info_generic could be utilized to get information about the query."
+                    "source": "## VIEW Creation\nFirst, we create view which utilize vector search to find relevant chunks. While the cities_info_generic could be utilized to get information about the query."
                 },
                 {
                     "cell_type": "code",
@@ -1385,13 +1383,13 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT cities_info_generic_postgres(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(generate_embeddings($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  cities_embeddings_postgres AS pe \nJOIN \n  cities_pdf_postgres AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5);"
+                    "source": "CREATE VIEW cities_info_generic_postgres(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(generate_embeddings($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  cities_embeddings_postgres AS pe \nJOIN \n  cities_pdf_postgres AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5);"
                 },
                 {
                     "cell_type": "markdown",
                     "id": "45668de6-c81a-4e8a-b8a9-0b6010f1c1e4",
                     "metadata": {},
-                    "source": "### Using Agent\n\nUsing the agent to understand how similarity search works"
+                    "source": "### Using VIEW\n\nUsing the VIEW to understand how similarity search works"
                 },
                 {
                     "cell_type": "code",
@@ -1411,28 +1409,6 @@
                 },
                 {
                     "cell_type": "markdown",
-                    "id": "b1dc2054-453d-4e49-94b5-a4976740b655",
-                    "metadata": {},
-                    "source": "We create another tool, `get_semantics`, which uses the built-in table function `semantics()`, which returns the schemas of all the tables in the database."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 26,
-                    "id": "eb8b7f96-ee30-48da-b6cf-2f087c6aa043",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE AGENT get_semantics() AS \n(SELECT * FROM semantics())\nCOMMENT 'Schemas of all the tables';"
-                },
-                {
-                    "cell_type": "markdown",
                     "id": "df6d7812-383a-4274-af06-c45a380b2a22",
                     "metadata": {},
                     "source": "We will also be using [`QUERY AGENT`](../getting_started/Query%20Agent.ipynb) we created before to go over the cities table in the data to retrieve specific information."
@@ -1449,7 +1425,7 @@
                     "id": "c0877078-ed54-43d2-9daa-0c720ddab3ed",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE PROMPT cities_prompt (\nsystem \"You are a master data agent specializing in providing information about cities. Your task is to answer user questions about cities using the available tools and data sources.\n\nTools at your disposal:\n1. query_model(table, question): Use this to retrieve data from the specified table in the database. For city-related queries, use the 'cities' table, which contains information such as population, latitude, longitude, and country.\n2. cities_info_generic(question): Use this for general information about cities using similarity search based on cosine distance.\n\nGuidelines for tool usage:\n- query_model: Prefer this tool when specific data points (population, location, country) are needed or when comparing multiple cities. Make your intent clear of what you want to search\n- cities_info_generic: Use this when the city is not known, or when seeking general information not available in the database.\n\nAlways follow these steps:\n1. Analyze the question to determine the best tool(s) to use.\n2. Use the chosen tool(s) to gather relevant information.\n3. Synthesize the gathered information to provide a comprehensive answer.\n\nOutput format:\nQuestion: [Restate the input question]\nThought: [Your reasoning about how to approach the question]\nAction: [The tool you decide to use]\nAction Input: [For query_model: {'question': 'Your specific question'}, For cities_info_generic: 'Your question']\nObservation: [The result returned by the tool]\n... (Repeat Thought/Action/Action Input/Observation as needed)\nThought: [Final reasoning about how to answer the question based on all gathered information]\nFinal Answer: [Comprehensive answer to the question, including:\n  - Direct response to the question\n  - Supporting data from the tools used\n  - If query_model was used, include the full SQL query\n  - Any relevant additional context or explanations]\n\nRemember:\n- Always use the tools to gather information; do not rely on prior knowledge.\n- Be thorough in your analysis and provide detailed, informative answers.\n- When using query_model, always formulate a clear, specific question for the SQL query. The output of query_agent would be SQLQuery and SQLAnswer.\n- If the question is ambiguous, state your assumptions clearly in the final answer.\n\nBegin!\nQuestion: {{input}}\nThought: Let's start by analyzing the question and determining the best approach to answer it.\"\n);"
+                    "source": "CREATE PROMPT cities_prompt (\nsystem \"You are a master data agent specializing in providing information about cities. Your task is to answer user questions about cities using the available tools and data sources.\n\nTools at your disposal:\n1. query_model(table, question): Use this to retrieve data from the specified table in the database. For city-related queries, use the 'cities' table, which contains information such as population, latitude, longitude, and country.\n2. cities_info_generic(question): Use this for general information about cities using similarity search based on cosine distance.\n\nGuidelines for tool usage:\n- query_model: Prefer this tool when specific data points (population, location, country) are needed or when comparing multiple cities. Make your intent clear of what you want to search\n- cities_info_generic: Use this when the city is not known, or when seeking general information not available in the database.\n\nAlways follow these steps:\n1. Analyze the question to determine the best tool(s) to use.\n2. Use the chosen tool(s) to gather relevant information.\n3. Synthesize the gathered information to provide a comprehensive answer.\n\nOutput format:\nQuestion: [Restate the input question]\nThought: [Your reasoning about how to approach the question]\nAction: [The tool you decide to use]\nAction Input: [For query_model: {'question': 'Your specific question'}, For cities_info_generic: 'Your question']\nObservation: [The result returned by the tool]\n... (Repeat Thought/Action/Action Input/Observation as needed)\nThought: [Final reasoning about how to answer the question based on all gathered information]\nFinal Answer: [Comprehensive answer to the question, including:\n  - Direct response to the question\n  - Supporting data from the tools used\n  - If query_model was used, include the full SQL query\n  - Any relevant additional context or explanations]\n\nRemember:\n- Always use the tools to gather information; do not rely on prior knowledge.\n- Be thorough in your analysis and provide detailed, informative answers.\n- When using query_model, always formulate a clear, specific question for the SQL query. The output of query_model would be SQLQuery and SQLAnswer.\n- If the question is ambiguous, state your assumptions clearly in the final answer.\n\nBegin!\nQuestion: {{input}}\nThought: Let's start by analyzing the question and determining the best approach to answer it.\"\n);"
                 },
                 {
                     "cell_type": "markdown",
@@ -1527,7 +1503,7 @@
                     "cell_type": "markdown",
                     "id": "5c6ac19c-31dc-4c12-a5d4-a1e4c4ccc53e",
                     "metadata": {},
-                    "source": "### Running the Chat Agent\n\nWe can use the model created as chat agent"
+                    "source": "### Running the Chat\n\nWe can use the model created as chat"
                 },
                 {
                     "cell_type": "code",
@@ -1554,7 +1530,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-18T12:57:05+05:30",
+        "last_modified": "2024-07-18T13:04:20+05:30",
         "created_at": "2024-07-09T11:07:58+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20Using%20PostgreSQL.ipynb",
         "tags": [
@@ -1650,7 +1626,7 @@
                     "id": "ffa06530-1359-431a-a325-049c1d14f09e",
                     "metadata": {},
                     "outputs": [],
-                    "source": "INSERT INTO pdf_contents(link, content)\nSELECT * FROM (SELECT JSONExtractString(metadata, 'link'), arrayStringConcat(groupArray(content), '')\nFROM load_html((SELECT link FROM pdf_links))\nGROUP BY JSONExtractString(metadata, 'link'));\n"
+                    "source": "INSERT INTO pdf_contents(link, content)\nSELECT * FROM (SELECT JSONExtractString(metadata, 'link'), arrayStringConcat(groupArray(content), '')\nFROM load_html((SELECT link FROM pdf_links))\nGROUP BY JSONExtractString(metadata, 'link'));"
                 },
                 {
                     "cell_type": "markdown",
@@ -1762,7 +1738,7 @@
                     "cell_type": "markdown",
                     "id": "74614d40-3cfe-4d2c-ba2a-295e058a8bad",
                     "metadata": {},
-                    "source": "In the CRAG implementation, all documents are evaluated to filter out only the relevant ones. This process involves creating a prompt, model, and agent that return only the filtered documents."
+                    "source": "In the CRAG implementation, all documents are evaluated to filter out only the relevant ones. This process involves creating a prompt, model, and view that return only the filtered documents."
                 },
                 {
                     "cell_type": "code",
@@ -1786,7 +1762,7 @@
                     "id": "f1898f5c-d35e-42e1-ab29-ceaa5a48a133",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE AGENT get_correct_documents(question String) AS \n (with tbl as (\n    select id, content, retrieval_evaluator($question, content) answer from pdf_contents\n)\nselect id, answer, content\nfrom tbl where positionCaseInsensitive(answer, 'yes') > 0);"
+                    "source": "CREATE VIEW get_correct_documents(question String) AS \n (with tbl as (\n    select id, content, retrieval_evaluator($question, content) answer from pdf_contents\n)\nselect id, answer, content\nfrom tbl where positionCaseInsensitive(answer, 'yes') > 0);"
                 },
                 {
                     "cell_type": "markdown",
@@ -1824,7 +1800,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT agent_fallback_data(question String \"Query to search question\") AS\n(WITH tbl AS (\n  SELECT CAST(generate_embeddings($question) AS `Array`(`Float32`)) AS question_embed\n)\nSELECT cosineDistance(embeddings, question_embed) AS similarity, p.id, p.possible_answers\nFROM embeddings_fallback_data AS pe\nJOIN popqa AS p ON p.id = pe.id\nCROSS JOIN tbl\nORDER BY similarity \nLIMIT 10)"
+                    "source": "CREATE VIEW view_fallback_data(question String \"Query to search question\") AS\n(WITH tbl AS (\n  SELECT CAST(generate_embeddings($question) AS `Array`(`Float32`)) AS question_embed\n)\nSELECT cosineDistance(embeddings, question_embed) AS similarity, p.id, p.possible_answers\nFROM embeddings_fallback_data AS pe\nJOIN popqa AS p ON p.id = pe.id\nCROSS JOIN tbl\nORDER BY similarity \nLIMIT 10)"
                 },
                 {
                     "cell_type": "code",
@@ -1840,7 +1816,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL IF NOT EXISTS fallback_model (\n  input\n) USING open_ai_provider()\nPROMPT (system \"Given a question, find the document relevant to the question and return possible answers and similarity scores. \nQuestion: {{input}}\")\nTOOLS (agent_fallback_data COMMENT 'Returns top 10 results for the given query with similarity, id, and possible_answers')\nSETTINGS retries = 1;"
+                    "source": "CREATE MODEL IF NOT EXISTS fallback_model (\n  input\n) USING open_ai_provider()\nPROMPT (system \"Given a question, find the document relevant to the question and return possible answers and similarity scores. \nQuestion: {{input}}\")\nTOOLS (view_fallback_data COMMENT 'Returns top 10 results for the given query with similarity, id, and possible_answers')\nSETTINGS retries = 1;"
                 },
                 {
                     "cell_type": "markdown",
@@ -1862,7 +1838,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL main_crag(\n    question\n) USING open_ai_provider()\nPROMPT (system \"Given a question, try to find a relevant answer based on relavent documents. \nRelevant documents can be fetched with get_correct_documents tool.\nIf you cannot get any document, try to use the fallback data source.\nFallback data source can only be used if the main data source doesn't provide a relevant answer.\nYou must verify the answer with the evaluator. If the evaluator returns 'no', do not provide an answer to the user.\nquestion: {{question}}\")\nTOOLS (get_correct_documents COMMENT 'AGENT to get the relevant document to the question',\n    fallback_model COMMENT 'Model for searching fallback data source',\n    evaluator COMMENT 'Model for verifying the answer')\nSETTINGS retries = 1;"
+                    "source": "CREATE MODEL main_crag(\n    question\n) USING open_ai_provider()\nPROMPT (system \"Given a question, try to find a relevant answer based on relavent documents. \nRelevant documents can be fetched with get_correct_documents tool.\nIf you cannot get any document, try to use the fallback data source.\nFallback data source can only be used if the main data source doesn't provide a relevant answer.\nYou must verify the answer with the evaluator. If the evaluator returns 'no', do not provide an answer to the user.\nquestion: {{question}}\")\nTOOLS (get_correct_documents COMMENT 'VIEW to get the relevant document to the question',\n    fallback_model COMMENT 'Model for searching fallback data source',\n    evaluator COMMENT 'Model for verifying the answer')\nSETTINGS retries = 1;"
                 },
                 {
                     "cell_type": "code",
@@ -1911,7 +1887,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-18T12:57:05+05:30",
+        "last_modified": "2024-07-18T13:04:20+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/CRAG.ipynb",
         "tags": [
@@ -2082,7 +2058,7 @@
                     "cell_type": "markdown",
                     "id": "7ee88a0c-96ca-4177-bcc9-b11176e3224f",
                     "metadata": {},
-                    "source": "## AGENT Creation\nFirst, we create agent which utilize vector search to find relevant chunks. While the cities_info_generic could be utilized to get information about the query."
+                    "source": "## VIEW Creation\nFirst, we create view which utilize vector search to find relevant chunks. While the cities_info_generic could be utilized to get information about the query."
                 },
                 {
                     "cell_type": "code",
@@ -2098,13 +2074,13 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE AGENT cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(generate_embeddings($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  cities_embeddings AS pe \nJOIN \n  cities_pdf AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5);"
+                    "source": "CREATE VIEW cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(generate_embeddings($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  cities_embeddings AS pe \nJOIN \n  cities_pdf AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5);"
                 },
                 {
                     "cell_type": "markdown",
                     "id": "45668de6-c81a-4e8a-b8a9-0b6010f1c1e4",
                     "metadata": {},
-                    "source": "### Using Agent\n\nUsing the agent to understand how similarity search works"
+                    "source": "### Using VIEW\n\nUsing the view to understand how similarity search works"
                 },
                 {
                     "cell_type": "code",
@@ -2140,7 +2116,7 @@
                     "id": "c0877078-ed54-43d2-9daa-0c720ddab3ed",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE PROMPT cities_prompt (\nsystem \"You are a master data agent specializing in providing information about cities. Your task is to answer user questions about cities using the available tools and data sources.\n\nTools at your disposal:\n1. query_model(table, question): Use this to retrieve data from the specified table in the database. For city-related queries, use the 'cities' table, which contains information such as population, latitude, longitude, and country.\n2. cities_info_generic(question): Use this for general information about cities using similarity search based on cosine distance.\n\nGuidelines for tool usage:\n- query_model: Prefer this tool when specific data points (population, location, country) are needed or when comparing multiple cities. Make your intent clear of what you want to search\n- cities_info_generic: Use this when the city is not known, or when seeking general information not available in the database.\n\nAlways follow these steps:\n1. Analyze the question to determine the best tool(s) to use.\n2. Use the chosen tool(s) to gather relevant information.\n3. Synthesize the gathered information to provide a comprehensive answer.\n\nOutput format:\nQuestion: [Restate the input question]\nThought: [Your reasoning about how to approach the question]\nAction: [The tool you decide to use]\nAction Input: [For query_model: {'question': 'Your specific question'}, For cities_info_generic: 'Your question']\nObservation: [The result returned by the tool]\n... (Repeat Thought/Action/Action Input/Observation as needed)\nThought: [Final reasoning about how to answer the question based on all gathered information]\nFinal Answer: [Comprehensive answer to the question, including:\n  - Direct response to the question\n  - Supporting data from the tools used\n  - If query_model was used, include the full SQL query\n  - Any relevant additional context or explanations]\n\nRemember:\n- Always use the tools to gather information; do not rely on prior knowledge.\n- Be thorough in your analysis and provide detailed, informative answers.\n- When using query_model, always formulate a clear, specific question for the SQL query. The output of query_agent would be SQLQuery and SQLAnswer.\n- If the question is ambiguous, state your assumptions clearly in the final answer.\n\nBegin!\nQuestion: {{input}}\nThought: Let's start by analyzing the question and determining the best approach to answer it.\"\n);"
+                    "source": "CREATE PROMPT cities_prompt (\nsystem \"You are a master data agent specializing in providing information about cities. Your task is to answer user questions about cities using the available tools and data sources.\n\nTools at your disposal:\n1. query_model(table, question): Use this to retrieve data from the specified table in the database. For city-related queries, use the 'cities' table, which contains information such as population, latitude, longitude, and country.\n2. cities_info_generic(question): Use this for general information about cities using similarity search based on cosine distance.\n\nGuidelines for tool usage:\n- query_model: Prefer this tool when specific data points (population, location, country) are needed or when comparing multiple cities. Make your intent clear of what you want to search\n- cities_info_generic: Use this when the city is not known, or when seeking general information not available in the database.\n\nAlways follow these steps:\n1. Analyze the question to determine the best tool(s) to use.\n2. Use the chosen tool(s) to gather relevant information.\n3. Synthesize the gathered information to provide a comprehensive answer.\n\nOutput format:\nQuestion: [Restate the input question]\nThought: [Your reasoning about how to approach the question]\nAction: [The tool you decide to use]\nAction Input: [For query_model: {'question': 'Your specific question'}, For cities_info_generic: 'Your question']\nObservation: [The result returned by the tool]\n... (Repeat Thought/Action/Action Input/Observation as needed)\nThought: [Final reasoning about how to answer the question based on all gathered information]\nFinal Answer: [Comprehensive answer to the question, including:\n  - Direct response to the question\n  - Supporting data from the tools used\n  - If query_model was used, include the full SQL query\n  - Any relevant additional context or explanations]\n\nRemember:\n- Always use the tools to gather information; do not rely on prior knowledge.\n- Be thorough in your analysis and provide detailed, informative answers.\n- When using query_model, always formulate a clear, specific question for the SQL query. The output of query_model would be SQLQuery and SQLAnswer.\n- If the question is ambiguous, state your assumptions clearly in the final answer.\n\nBegin!\nQuestion: {{input}}\nThought: Let's start by analyzing the question and determining the best approach to answer it.\"\n);"
                 },
                 {
                     "cell_type": "markdown",
@@ -2218,7 +2194,7 @@
                     "cell_type": "markdown",
                     "id": "921f9434-ebf1-4689-a1b5-f6137f6d42af",
                     "metadata": {},
-                    "source": "### Running the Chat Agent\n\nWe can use the model created as chat agent"
+                    "source": "### Running the Chat\n\nWe can use the model created as chat"
                 },
                 {
                     "cell_type": "code",
@@ -2245,7 +2221,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-18T12:57:05+05:30",
+        "last_modified": "2024-07-18T13:04:20+05:30",
         "created_at": "2024-07-09T10:53:11+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20using%20LangDB.ipynb",
         "tags": [
