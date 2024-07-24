@@ -21,12 +21,14 @@ The repository is structured as follows:
 | [Sentiment Analysis - I](getting_started/Sentinment%20Analysis%20Part%201.ipynb)        | Create a sentiment model using LLMs         |
 | [Sentiment Analysis - 2](getting_started/Sentinment%20Analysis%20Part%202.ipynb)        | Create a batched sentiment model using LLMs         |
 | [Structured Layout Extraction from PDFs and Images](getting_started/Structured%20Layout%20Extraction%20from%20PDFs%20and%20Images.ipynb) | Convert PDF documents into structured tables |
+| [Text-to-SQL](getting_started/Text-to-SQL.ipynb) | Model which can run SQL queries based on text |
+| [Working with Postgres, MySQL, MongoDB, and Others](getting_started/Working%20with%20Postgres,%20MySQL,%20MongoDB,%20and%20Others.ipynb) | How to use different database types | 
 
-## Agents
+## RAG
 
 | Sample                                           | Description                                  |
 | ------------------------------------------------ | -------------------------------------------- |
-| [Combine Structured Data w/ Unstructured Data using Postgres and LangDB](rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20using%20Postgres.ipynb) | Combine insights from both structured and unstructured data |
+| [Combine Structured Data w/ Unstructured Data using LangDB](rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20using%20LangDB.ipynb) | Combine insights from both structured and unstructured data |
 | [Corrective RAG](rag/CRAG.ipynb) | Corrective RAG powered by LangDB |
 | [QA on PDF & RAG using LangDB](rag/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb) | QA on PDF & RAG using LangDB |
 
