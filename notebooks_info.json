@@ -7,7 +7,7 @@
                     "cell_type": "markdown",
                     "id": "d024b21c-9cf9-4ca8-816c-727ea7bdccf1",
                     "metadata": {},
-                    "source": "# Text-to-SQL \n\nThe Query Model is an advanced tool designed to generate and execute Clickhouse SQL queries based on natural language questions. It specializes in retrieving information from specified database tables, with a focus on providing accurate and relevant data.\n"
+                    "source": "# Text-to-SQL \n\nThe Text-to-SQL Model is an advanced tool designed to generate and execute Clickhouse SQL queries based on natural language questions. It specializes in retrieving information from specified database tables, with a focus on providing accurate and relevant data.\n"
                 },
                 {
                     "cell_type": "markdown",
@@ -29,7 +29,7 @@
                     "cell_type": "markdown",
                     "id": "b34fce22-6269-4d72-bbf0-1b92c850ee2c",
                     "metadata": {},
-                    "source": "## Creating Tools required for Query Model"
+                    "source": "## Creating Tools required for Text-to-SQL Model"
                 },
                 {
                     "cell_type": "markdown",
@@ -93,7 +93,7 @@
                     "id": "d8c361ac-b6d0-426b-9e20-312e905e27a9",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CREATE MODEL query_model(\n    input\n) USING open_ai_provider(model_name = 'gpt-4o')\nPROMPT query_prompt\nTOOLS (\n    get_semantics COMMENT 'Tool to get the schemas of the tables in the database',\n    langdb_raw_query COMMENT 'Tool to execute SQL query over the database',\n    query_validator COMMENT 'Model to Validate the generated SQL query'\n)\nSETTINGS retries = 3;"
+                    "source": "CREATE MODEL text_to_sql(\n    input\n) USING open_ai_provider(model_name = 'gpt-4o')\nPROMPT query_prompt\nTOOLS (\n    get_semantics COMMENT 'Tool to get the schemas of the tables in the database',\n    langdb_raw_query COMMENT 'Tool to execute SQL query over the database',\n    query_validator COMMENT 'Model to Validate the generated SQL query'\n)\nSETTINGS retries = 3;"
                 },
                 {
                     "cell_type": "markdown",
@@ -107,7 +107,7 @@
                     "id": "e11494e3-a441-4a44-a319-dd95f8ebd990",
                     "metadata": {},
                     "outputs": [],
-                    "source": "CHAT query_model"
+                    "source": "CHAT text_to_sql"
                 }
             ],
             "metadata": {
@@ -126,94 +126,9 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-24T15:17:39+05:30",
+        "last_modified": "2024-08-07T12:49:00+05:30",
         "created_at": "2024-07-24T15:17:39+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Text-to-SQL.ipynb",
-        "tags": [
-            "Getting Started"
-        ]
-    },
-    {
-        "title": "Using Providers",
-        "content": {
-            "cells": [
-                {
-                    "cell_type": "markdown",
-                    "metadata": {},
-                    "source": "# Using Providers\nThis notebook goes over, how to create Providers.\n\n## Provider Creation\n\nWe will be creating providers for Completion Model as well as Embeddings\n"
-                },
-                {
-                    "cell_type": "markdown",
-                    "metadata": {},
-                    "source": "\n### Model Provider\n\nWe will create a provider that will store our engine, api key and model params and make it reusable."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
-                    "outputs": [],
-                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-4o-mini'\n);"
-                },
-                {
-                    "cell_type": "markdown",
-                    "metadata": {},
-                    "source": "Now this `open_ai_provider` will be reusable for completion models as well as embeddings models.\n\n### Completion MODEL"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
-                    "outputs": [],
-                    "source": "CREATE MODEL example_model(\n    input\n) USING open_ai_provider()\nPROMPT ( system \"You are an helpful assistant. Help the user with his queries\",\nhuman \"{{input}}\"\n);"
-                },
-                {
-                    "cell_type": "markdown",
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
-                    "source": "## Embeddings MODEL\n\nWe will be using the same provider for embedding models."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "metadata": {
-                        "vscode": {
-                            "languageId": "sql"
-                        }
-                    },
-                    "outputs": [],
-                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS example_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
-                }
-            ],
-            "metadata": {
-                "kernelspec": {
-                    "display_name": "langdb",
-                    "language": "sql",
-                    "name": "langdb"
-                },
-                "language_info": {
-                    "codemirror_mode": "sql",
-                    "file_extension": ".sql",
-                    "mimetype": "text/x-sql",
-                    "name": "sql"
-                }
-            },
-            "nbformat": 4,
-            "nbformat_minor": 4
-        },
-        "last_modified": "2024-07-24T15:17:39+05:30",
-        "created_at": "2024-07-03T14:23:52+07:00",
-        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Using%20Providers.ipynb",
         "tags": [
             "Getting Started"
         ]
@@ -248,7 +163,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE TABLE products (\n    product_id UInt32,\n    product_name String\n) ENGINE = MergeTree\nORDER BY product_id;"
+                    "source": "CREATE TABLE products (\n    product_id UInt32,\n    product_name \"String\"\n) ENGINE = MergeTree\nORDER BY product_id;"
                 },
                 {
                     "cell_type": "code",
@@ -264,7 +179,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE TABLE customer_reviews (\n    review_id UInt32,\n    product_id UInt32,\n    customer_id UInt32,\n    review_date Date,\n    review_text String,\n    rating UInt8,\n    location String\n) ENGINE = MergeTree\nORDER BY review_id;"
+                    "source": "CREATE TABLE customer_reviews (\n    review_id UInt32,\n    product_id UInt32,\n    customer_id UInt32,\n    review_date Date,\n    review_text \"String\",\n    rating UInt8,\n    location \"String\"\n) ENGINE = MergeTree\nORDER BY review_id;"
                 },
                 {
                     "cell_type": "code",
@@ -443,7 +358,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-24T15:17:39+05:30",
+        "last_modified": "2024-08-05T13:27:26+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Sentiment%20Analysis%20Part%201.ipynb",
         "tags": [
@@ -451,7 +366,7 @@
         ]
     },
     {
-        "title": "Working with Postgres, MySQL, MongoDB, and Others",
+        "title": "Running Text-To-SQL on MongoDB: Working with Postgres, MySQL, MongoDB and Others",
         "content": {
             "metadata": {
                 "kernelspec": {
@@ -477,7 +392,7 @@
                 {
                     "id": "d65ff742-8329-4b4c-836c-87f5196e33ae",
                     "cell_type": "markdown",
-                    "source": "# Working with Postgres, MySQL, MongoDB, and Others\nWith LangDB, you can seamlessly connect to your preexisting databases, including Postgres, MySQL, MongoDB, and many others. This capability allows you to leverage your existing data infrastructure without the need for significant modifications.",
+                    "source": "# Running Text-To-SQL on MongoDB: Working with Postgres, MySQL, MongoDB and Others\n\nWhen working with LangDB, one question that developers ask how langdb integrates with their existing data infrastructure. Fortunately, LangDB offers seamless connectivity to your pre-existing databases, allowing you to leverage your data without significant modifications. \n\n## Database Integrations\n\n### Table Engines \n\nLangDB, built on top of Clickhouse, provides native support for integrating with a wide range of databases. This means you can use the Integration Engines of Clickhouse to continue using your existing databases while benefiting from LangDB's SQL arsenal.\n\nHere are a few examples of how you can connect to some popular databases. You can find more about them here: [Table Engines](https://clickhouse.com/docs/en/engines/table-engines#integration-engines)\n\nNOTE: Original article can be found at https://app.langdb.ai/share/apps/4250cb28-5e2b-421f-9711-0f334452aef5",
                     "metadata": {}
                 },
                 {
@@ -515,24 +430,170 @@
                     "metadata": {}
                 },
                 {
-                    "id": "b669fed1-321a-43d6-9d60-ac9a8c127a76",
+                    "id": "9b68f4e9-36a6-4eba-8f37-954453b3b126",
                     "cell_type": "code",
-                    "source": "CREATE TABLE [IF NOT EXISTS] table_name\n(\n    col_name1 [type1],\n    col_name2 [type2],\n    ...\n) ENGINE = MongoDB(host:port, database, collection, user, password );",
+                    "source": "CREATE TABLE [IF NOT EXISTS] table_name \n(\n    col_name1 type1 ,\n    col_name2 type2 ,\n    ...\n) ENGINE = MongoDB(host:port, database, collection, user, password [, 'ssl=true&tls=true&tlsAllowInvalidCertificates=true&connectTimeoutMS=30000&socketTimeoutMS=60000&authSource=admin']); ",
                     "metadata": {},
                     "outputs": [],
                     "execution_count": null
                 },
                 {
-                    "id": "087b518f-4e5a-41b8-8525-1a9edca91b09",
+                    "id": "b8641942-89d0-4382-ac07-8b67cfe402ec",
                     "cell_type": "markdown",
-                    "source": "Once connected., you can power your databases using LangDB. ",
+                    "source": "### Table Functions\nApart from the table engines, you can also query your existing databases directly using `table functions` There are Postgresql, MongoDB, MySQL, and many other table functions.\nYou can read more about them here: [Table Functions](https://clickhouse.com/docs/en/sql-reference/table-functions)",
+                    "metadata": {}
+                },
+                {
+                    "id": "b00fc17a-0044-4dd3-bafe-4912334d32d1",
+                    "cell_type": "markdown",
+                    "source": "Let's take the example of MongoDB. On MongoDB Atlas, I will use [Sample Analytics Dataset](https://www.mongodb.com/docs/atlas/sample-data/sample-analytics/). \n\nThe `sample_analytics` database contains three collections for a typical financial services application. It has customers, accounts, and transactions. \n\nWe will focus on `accounts`, but feel free to play around. The `accounts` collection contains the details of the users. ",
+                    "metadata": {}
+                },
+                {
+                    "id": "4b3a253c-c1bf-4634-a475-31680a6d8017",
+                    "cell_type": "markdown",
+                    "source": "We can use the `mongodb` table function to query the collection quickly.",
+                    "metadata": {}
+                },
+                {
+                    "id": "9dafdd95-30e0-4d63-83ee-83317b7fa01f",
+                    "cell_type": "code",
+                    "source": "SELECT * from mongodb(\n    'host:port',\n    'sample_analytics',\n    'customers',\n    'user',\n    'password',\n   '_id String, \n     username String, \n     name String, \n     address String, \n     birthdate DateTime, \n     email String, \n     accounts Array(Int32)',\n    'connectTimeoutMS=10000&ssl=true&authSource=admin'\n) limit 5;",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "execution_count": 1,
+                            "output_type": "execute_result",
+                            "data": {
+                                "text/html": "<table border=\"1\"><thead><tr><th>_id</th><th>username</th><th>name</th><th>address</th><th>birthdate</th><th>email</th><th>accounts</th></tr></thead><tbody><tr><td>5ca4bbcea2dd94ee58162a69</td><td>valenciajennifer</td><td>Lindsay Cowan</td><td>Unit 1047 Box 4089\nDPO AA 57348</td><td>1994-02-19 23:46:27</td><td>cooperalexis@hotmail.com</td><td>[116508]</td></tr><tr><td>5ca4bbcea2dd94ee58162b29</td><td>crodriguez</td><td>Charles Jones</td><td>183 Young Mountain\nRossmouth, DC 11579</td><td>1974-01-24 12:12:53</td><td>vancejohnny@hotmail.com</td><td>[467666]</td></tr><tr><td>5ca4bbcea2dd94ee58162a76</td><td>portermichael</td><td>Lauren Clark</td><td>1579 Young Trail\nJessechester, OH 88328</td><td>1980-10-28 16:25:59</td><td>briannafrost@yahoo.com</td><td>[883283,980867,164836,200611,528224,931483]</td></tr><tr><td>5ca4bbcea2dd94ee58162a72</td><td>wesley20</td><td>James Sanchez</td><td>8681 Karen Roads Apt. 096\nLowehaven, IA 19798</td><td>1973-01-13 16:17:26</td><td>josephmacias@hotmail.com</td><td>[987709]</td></tr><tr><td>5ca4bbcea2dd94ee58162bf4</td><td>skinnercraig</td><td>Ashley Lindsey</td><td>Unit 6691 Box 1189\nDPO AP 53029</td><td>1994-06-16 07:38:48</td><td>robertwalker@gmail.com</td><td>[375655,892096,401997,253554,890055,959435]</td></tr></tbody></table>"
+                            },
+                            "metadata": {
+                                "trace": "639b56c4-4d2d-4eac-8856-b9687e19581c"
+                            }
+                        }
+                    ],
+                    "execution_count": 1
+                },
+                {
+                    "id": "5783e4c0-72e6-47a2-ac2f-ac4f5f8d496d",
+                    "cell_type": "markdown",
+                    "source": "However, to use LangDB's collection of tools like Text-to-SQL and Embeddings, it is better to use the table engines. You can do something like this for the above query to get read-only access to the remote MongoDB collection.",
+                    "metadata": {}
+                },
+                {
+                    "id": "0ec64531-bd11-4bfb-96e6-5646757505e0",
+                    "cell_type": "code",
+                    "source": "CREATE TABLE IF NOT EXISTS customers_mongodb\n(\n     _id \"String\", \n     username \"String\", \n     name \"String\", \n     address \"String\", \n     birthdate DateTime, \n     email \"String\", \n     accounts Array(\"Int32\")\n) ENGINE = MongoDB(\n    'host:port',\n    'sample_analytics',\n    'customers',\n    'user',\n    'password',\n    'ssl=true&tls=true&tlsAllowInvalidCertificates=true&connectTimeoutMS=30000&socketTimeoutMS=60000&authSource=admin'\n);",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "execution_count": 1,
+                            "output_type": "execute_result",
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {
+                                "trace": "7b8aa06f-0b76-4500-af1b-b31753742c18"
+                            }
+                        }
+                    ],
+                    "execution_count": 1
+                },
+                {
+                    "id": "3082b604-1abd-4755-99b4-7df6188963b4",
+                    "cell_type": "code",
+                    "source": "SELECT * FROM customers_mongodb limit 5",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "execution_count": 2,
+                            "output_type": "execute_result",
+                            "data": {
+                                "text/html": "<table border=\"1\"><thead><tr><th>_id</th><th>username</th><th>name</th><th>address</th><th>birthdate</th><th>email</th><th>accounts</th></tr></thead><tbody><tr><td>5ca4bbcea2dd94ee58162a69</td><td>valenciajennifer</td><td>Lindsay Cowan</td><td>Unit 1047 Box 4089\nDPO AA 57348</td><td>1994-02-19 23:46:27</td><td>cooperalexis@hotmail.com</td><td>[116508]</td></tr><tr><td>5ca4bbcea2dd94ee58162b29</td><td>crodriguez</td><td>Charles Jones</td><td>183 Young Mountain\nRossmouth, DC 11579</td><td>1974-01-24 12:12:53</td><td>vancejohnny@hotmail.com</td><td>[467666]</td></tr><tr><td>5ca4bbcea2dd94ee58162a76</td><td>portermichael</td><td>Lauren Clark</td><td>1579 Young Trail\nJessechester, OH 88328</td><td>1980-10-28 16:25:59</td><td>briannafrost@yahoo.com</td><td>[883283,980867,164836,200611,528224,931483]</td></tr><tr><td>5ca4bbcea2dd94ee58162a72</td><td>wesley20</td><td>James Sanchez</td><td>8681 Karen Roads Apt. 096\nLowehaven, IA 19798</td><td>1973-01-13 16:17:26</td><td>josephmacias@hotmail.com</td><td>[987709]</td></tr><tr><td>5ca4bbcea2dd94ee58162bf4</td><td>skinnercraig</td><td>Ashley Lindsey</td><td>Unit 6691 Box 1189\nDPO AP 53029</td><td>1994-06-16 07:38:48</td><td>robertwalker@gmail.com</td><td>[375655,892096,401997,253554,890055,959435]</td></tr></tbody></table>"
+                            },
+                            "metadata": {
+                                "trace": "9c870e71-9f76-48fa-82ed-1722253b2518"
+                            }
+                        }
+                    ],
+                    "execution_count": 2
+                },
+                {
+                    "id": "0e13c533-832b-43a2-918c-313fd8cc0650",
+                    "cell_type": "markdown",
+                    "source": "Now that we have created a table, we can use a [`Text-To-SQL`](https://app.langdb.ai/samples/text-to-sql) model directly onto the database. The Model can be found here:  [`Text-To-SQL`](https://app.langdb.ai/samples/text-to-sql)",
+                    "metadata": {}
+                },
+                {
+                    "id": "3e0fa518-f977-4b33-9e6e-5b89afcb5987",
+                    "cell_type": "code",
+                    "source": "SELECT text_to_sql('How Many accounts are from people who were born in 1994')",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "output_type": "display_data",
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {
+                                "trace": "5edca3ba-62a9-4d7f-a6ff-844687ec4a61"
+                            }
+                        },
+                        {
+                            "name": "stdout",
+                            "text": "",
+                            "output_type": "stream"
+                        },
+                        {
+                            "name": "stdout",
+                            "text": "Question: How many accounts are from people who were born in 1994?\nSQLQuery: `SELECT COUNT(*) as account_count FROM customers_mongodb WHERE toYear(birthdate) = 1994`\nSQLResult: [{\"account_count\":\"19\"}]",
+                            "output_type": "stream"
+                        }
+                    ],
+                    "execution_count": 4
+                },
+                {
+                    "id": "6de08775-f052-402f-a6d0-14e116248e39",
+                    "cell_type": "markdown",
+                    "source": "Let's verify and run that query for ourselves to confirm it.",
+                    "metadata": {}
+                },
+                {
+                    "id": "1033155f-dde8-4da4-aaaa-421cdf7fc981",
+                    "cell_type": "code",
+                    "source": "SELECT COUNT(*) as account_count FROM customers_mongodb WHERE toYear(birthdate) = 1994",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "execution_count": 1,
+                            "output_type": "execute_result",
+                            "data": {
+                                "text/html": "<table border=\"1\"><thead><tr><th>account_count</th></tr></thead><tbody><tr><td>19</td></tr></tbody></table>"
+                            },
+                            "metadata": {
+                                "trace": "b4d61f5d-c0bf-446a-87e5-92f7d3396f7a"
+                            }
+                        }
+                    ],
+                    "execution_count": 1
+                },
+                {
+                    "id": "2e818281-beca-4316-a055-097989b45edd",
+                    "cell_type": "markdown",
+                    "source": "LangDB's features like Text-to-SQL and embeddings can streamline your data querying and analysis process, making extracting valuable insights from your databases more accessible. The example we walked through illustrates the simplicity of getting started with LangDB and how it can complement your existing setup.",
+                    "metadata": {}
+                },
+                {
+                    "id": "6ccf2108-ba7a-4151-8cd1-e3e18997f760",
+                    "cell_type": "markdown",
+                    "source": "As you explore LangDB further, remember that its flexibility and compatibility can significantly enhance your development workflow. \n\nSo, if you're ready to take your database experience to the next level with Gen AI, try LangDB. Its integration capabilities and robust features might become a go-to tool in your development arsenal.",
                     "metadata": {}
                 }
             ]
         },
-        "last_modified": "2024-07-24T18:10:22+05:30",
-        "created_at": "2024-07-24T17:58:29+05:30",
-        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Working%20with%20Postgres,%20MySQL,%20MongoDB,%20and%20Others.ipynb",
+        "last_modified": "2024-08-08T14:48:08+05:30",
+        "created_at": "2024-08-08T14:48:08+05:30",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Running%20Text-To-SQL%20on%20MongoDB:%20Working%20with%20Postgres,%20MySQL,%20MongoDB%20and%20Others.ipynb",
         "tags": [
             "Postgres",
             "MongoDB",
@@ -541,118 +602,65 @@
         ]
     },
     {
-        "title": "Structured Layout Extraction from PDFs and Images",
+        "title": "Using Providers",
         "content": {
             "cells": [
                 {
                     "cell_type": "markdown",
-                    "id": "a5654363-7492-4a01-8959-b8c5e40e3c75",
                     "metadata": {},
-                    "source": "# Structured Extracton\nWe have already covered extracting semantic text chunks from PDF documents  but often times we ll have to work with images and preseve the layout to make the best out of LLMs. In this article we ll go through the following\n\n- Loading PDF tables\n- Querying table schemas\n- Transposing into structured tables. "
+                    "source": "# Using Providers\nThis notebook goes over, how to create Providers.\n\n## Provider Creation\n\nWe will be creating providers for Completion Model as well as Embeddings\n"
                 },
                 {
                     "cell_type": "markdown",
-                    "id": "72a84c66-2b64-4cdb-97f1-ecf475974250",
                     "metadata": {},
-                    "source": "For this example lets use wikipidea's [The world's billionaires'](https://en.wikipedia.org/wiki/The_World%27s_Billionaires) data set. \nWe want to extract the table in the 2024 section. Let's get started."
+                    "source": "\n### Model Provider\n\nWe will create a provider that will store our engine, api key and model params and make it reusable."
                 },
                 {
                     "cell_type": "code",
-                    "execution_count": 34,
-                    "id": "5704f901-686e-4994-bcaf-daacd94ff7d3",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
+                    "execution_count": null,
+                    "metadata": {
+                        "vscode": {
+                            "languageId": "sql"
                         }
-                    ],
-                    "source": "CREATE TABLE pdf_blocks_billionaires\nENGINE = Memory AS\nselect * from parse_document (\n    pages=> [2], \n    'https://en.wikipedia.org/api/rest_v1/page/pdf/The_World%27s_Billionaires'\n)"
+                    },
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-4o-mini'\n);"
                 },
                 {
                     "cell_type": "markdown",
-                    "id": "f23f8de2-aca1-48e8-9518-3ae25d5df466",
                     "metadata": {},
-                    "source": "This extracts structured information from the pdf with layout information. "
+                    "source": "Now this `open_ai_provider` will be reusable for completion models as well as embeddings models.\n\n### Completion MODEL"
                 },
                 {
                     "cell_type": "code",
-                    "execution_count": 35,
-                    "id": "707694c2-097c-4844-8540-93e0df7f262a",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>page</th>\n      <th>block_type</th>\n      <th>count(block_type)</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>0</td>\n      <td>LAYOUT_TEXT</td>\n      <td>1</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>0</td>\n      <td>LAYOUT_TABLE</td>\n      <td>1</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>0</td>\n      <td>LAYOUT_SECTION_HEADER</td>\n      <td>1</td>\n    </tr>\n  </tbody>\n</table>"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
+                    "execution_count": null,
+                    "metadata": {
+                        "vscode": {
+                            "languageId": "sql"
                         }
-                    ],
-                    "source": "select page, block_type, count(block_type) from pdf_blocks_billionaires \n    where block_type like 'LAYOUT%' \n    group by page, block_type;"
+                    },
+                    "outputs": [],
+                    "source": "CREATE MODEL example_model(\n    input\n) USING open_ai_provider()\nPROMPT ( system \"You are an helpful assistant. Help the user with his queries\",\nhuman \"{{input}}\"\n);"
                 },
                 {
                     "cell_type": "markdown",
-                    "id": "e5b06690-3d0e-4275-a3d1-53c5d3695735",
-                    "metadata": {},
-                    "source": "Lets now extract a structured table from this block and transpose. "
+                    "metadata": {
+                        "vscode": {
+                            "languageId": "sql"
+                        }
+                    },
+                    "source": "## Embeddings MODEL\n\nWe will be using the same provider for embedding models."
                 },
                 {
                     "cell_type": "code",
-                    "execution_count": 37,
-                    "id": "e376c8a1-6162-4600-9d5d-de7d4218b9d4",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>table_index</th>\n      <th>schema</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>0</td>\n      <td>`Primary source(s) of wealth` String,`Net worth (USD)` String,`No.` String,`Nationality` String,`Name` String,`Age` String</td>\n    </tr>\n  </tbody>\n</table>"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
+                    "execution_count": null,
+                    "metadata": {
+                        "vscode": {
+                            "languageId": "sql"
                         }
-                    ],
-                    "source": "select * from show_parsed_schemas((select * from pdf_blocks_billionaires)) where schema<> ''"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 39,
-                    "id": "9d9b0777-951d-4f6f-b7b1-e3c8de624919",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>No.</th>\n      <th>Name</th>\n      <th>Age</th>\n      <th>Net worth (USD)</th>\n      <th>Nationality</th>\n      <th>Primary source(s) of wealth</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td></td>\n      <td></td>\n      <td></td>\n      <td></td>\n      <td></td>\n      <td></td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>75</td>\n      <td>1</td>\n      <td>LVMH</td>\n      <td>Bernard Amault &amp; family</td>\n      <td>France</td>\n      <td>$233 billion</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>52</td>\n      <td>2 -</td>\n      <td>Tesla, SpaceX, Twitter (Currently</td>\n      <td>Elon Musk</td>\n      <td>South Africa Canada United States</td>\n      <td>$195 billion</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>60</td>\n      <td>3</td>\n      <td>Amazon</td>\n      <td>Jeff Bezos</td>\n      <td>United States</td>\n      <td>$194 billion</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>39</td>\n      <td>4 A</td>\n      <td>Meta Platforms</td>\n      <td>Mark Zuckerberg</td>\n      <td>United States</td>\n      <td>$177 billion</td>\n    </tr>\n    <tr>\n      <th>5</th>\n      <td>79</td>\n      <td>5</td>\n      <td>Oracle Corporation</td>\n      <td>Larry Ellison</td>\n      <td>United States</td>\n      <td>$141 billion</td>\n    </tr>\n    <tr>\n      <th>6</th>\n      <td>93</td>\n      <td>6</td>\n      <td>Berkshire Hathaway</td>\n      <td>Warren Buffett</td>\n      <td>United States</td>\n      <td>$133 billion</td>\n    </tr>\n    <tr>\n      <th>7</th>\n      <td>68</td>\n      <td>7</td>\n      <td>Microsoft</td>\n      <td>Bill Gates</td>\n      <td>United States</td>\n      <td>$128 billion</td>\n    </tr>\n    <tr>\n      <th>8</th>\n      <td>68</td>\n      <td>8 A</td>\n      <td>Microsoft</td>\n      <td>Steve Ballmer</td>\n      <td>United States</td>\n      <td>$121 billion</td>\n    </tr>\n    <tr>\n      <th>9</th>\n      <td>65</td>\n      <td>9</td>\n      <td>Reliance Industries</td>\n      <td>Mukesh Ambani</td>\n      <td>India</td>\n      <td>$116 billion</td>\n    </tr>\n    <tr>\n      <th>10</th>\n      <td>51</td>\n      <td>10</td>\n      <td>Google</td>\n      <td>Larry Page</td>\n      <td>United States</td>\n      <td>$114 billion</td>\n    </tr>\n  </tbody>\n</table>"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "select * from transpose_parsed_tables(table_index => 0, (select * from pdf_blocks_billionaires))"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "2e789a4c-2b65-4d66-9b50-544070d25678",
-                    "metadata": {},
-                    "source": "Check out the original table from the wikipedia page. As mentioned in other articles you can mix and match structured and \nunstructured data and use `pretty_print` function to feed data to the LLMs.\n\nYou can also directly convert this as a markdown using the schema provided to feed the entire document with layout to LLMs"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 41,
-                    "id": "cdaa3c94-dc32-4f8c-a4ee-45c8e2b2baa3",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>content</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>| Net worth (USD) | Primary source(s) of wealth | No.          | Name | Age                               | Nationality                       |\\n|-----------------|-----------------------------|--------------|------|-----------------------------------|-----------------------------------|\\n| null            | null                        | null         | null | null                              | null                              |\\n| 1               | Bernard Amault &amp; family     | $233 billion | 75   | France                            | LVMH                              |\\n| 2 -             | Elon Musk                   | $195 billion | 52   | South Africa Canada United States | Tesla, SpaceX, Twitter (Currently |\\n| 3               | Jeff Bezos                  | $194 billion | 60   | United States                     | Amazon                            |\\n| 4 A             | Mark Zuckerberg             | $177 billion | 39   | United States                     | Meta Platforms                    |\\n| 5               | Larry Ellison               | $141 billion | 79   | United States                     | Oracle Corporation                |\\n| 6               | Warren Buffett              | $133 billion | 93   | United States                     | Berkshire Hathaway                |\\n| 7               | Bill Gates                  | $128 billion | 68   | United States                     | Microsoft                         |\\n| 8 A             | Steve Ballmer               | $121 billion | 68   | United States                     | Microsoft                         |\\n| 9               | Mukesh Ambani               | $116 billion | 65   | India                             | Reliance Industries               |\\n| 10              | Larry Page                  | $114 billion | 51   | United States                     | Google                            |\\n ## 2023\\n In the 37th annual Forbes list of the world's billionaires, the list included 2,640 billionaires with a total net\\n wealth of $12.2 trillion, down 28 members and $500 billion from 2022. Over half of the list is less wealthy\\n compared to the previous year, including Elon Musk, who fell from No. 1 to No. 2. [7] The list also marks\\n for the first time a French citizen was in the top position as well as a non-American for the first time since\\n 2013 when the Mexican Carlos Slim Helu was the world's richest person. The list, like in 2022. counted 15\\n under 30 billionaires with the richest of them being Red Bull heir Mark Mateschitz with a net worth of\\n $34.7 billion. The youngest of the lot were Clemente Del Vecchio, heir to the Luxottica fortune shared with\\n his six siblings and stepmother, and Kim Jung-yang, whose fortune lies in Japanese-South Korean gaming\\n giant Nexon, both under-20s.(11)\\n</td>\n    </tr>\n  </tbody>\n</table>"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "select * from print_parsed_markdown((select * from pdf_blocks_billionaires))"
+                    },
+                    "outputs": [],
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS example_embed(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
                 }
             ],
             "metadata": {
@@ -669,13 +677,12 @@
                 }
             },
             "nbformat": 4,
-            "nbformat_minor": 5
+            "nbformat_minor": 4
         },
-        "last_modified": "2024-07-03T14:23:52+07:00",
+        "last_modified": "2024-07-24T15:17:39+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
-        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Structured%20Layout%20Extraction%20from%20PDFs%20and%20Images.ipynb",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Using%20Providers.ipynb",
         "tags": [
-            "PDF",
             "Getting Started"
         ]
     },
@@ -843,7 +850,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE TABLE calculated_review_jsons ( \n    batch_id UInt32,\n    response String,\n)\nEngine = MergeTree\nOrder By response"
+                    "source": "CREATE TABLE calculated_review_jsons ( \n    batch_id UInt32,\n    response \"String\",\n)\nEngine = MergeTree\nOrder By response"
                 },
                 {
                     "cell_type": "markdown",
@@ -982,10 +989,234 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-07-24T15:17:39+05:30",
+        "last_modified": "2024-08-05T13:27:26+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Sentiment%20Analysis%20Part%202.ipynb",
         "tags": [
+            "Getting Started"
+        ]
+    },
+    {
+        "title": "Structured Layout Extraction from PDFs and Images",
+        "content": {
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "id": "a5654363-7492-4a01-8959-b8c5e40e3c75",
+                    "metadata": {},
+                    "source": "# Structured Extracton\nWe have already covered extracting semantic text chunks from PDF documents  but often times we ll have to work with images and preseve the layout to make the best out of LLMs. In this article we ll go through the following\n\n- Loading PDF tables\n- Querying table schemas\n- Transposing into structured tables. "
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "72a84c66-2b64-4cdb-97f1-ecf475974250",
+                    "metadata": {},
+                    "source": "For this example lets use wikipidea's [The world's billionaires'](https://en.wikipedia.org/wiki/The_World%27s_Billionaires) data set. \nWe want to extract the table in the 2024 section. Let's get started."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 34,
+                    "id": "5704f901-686e-4994-bcaf-daacd94ff7d3",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE pdf_blocks_billionaires\nENGINE = Memory AS\nselect * from parse_document (\n    pages=> [2], \n    'https://en.wikipedia.org/api/rest_v1/page/pdf/The_World%27s_Billionaires'\n)"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "f23f8de2-aca1-48e8-9518-3ae25d5df466",
+                    "metadata": {},
+                    "source": "This extracts structured information from the pdf with layout information. "
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 35,
+                    "id": "707694c2-097c-4844-8540-93e0df7f262a",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>page</th>\n      <th>block_type</th>\n      <th>count(block_type)</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>0</td>\n      <td>LAYOUT_TEXT</td>\n      <td>1</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>0</td>\n      <td>LAYOUT_TABLE</td>\n      <td>1</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>0</td>\n      <td>LAYOUT_SECTION_HEADER</td>\n      <td>1</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select page, block_type, count(block_type) from pdf_blocks_billionaires \n    where block_type like 'LAYOUT%' \n    group by page, block_type;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "e5b06690-3d0e-4275-a3d1-53c5d3695735",
+                    "metadata": {},
+                    "source": "Lets now extract a structured table from this block and transpose. "
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 37,
+                    "id": "e376c8a1-6162-4600-9d5d-de7d4218b9d4",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>table_index</th>\n      <th>schema</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>0</td>\n      <td>`Primary source(s) of wealth` String,`Net worth (USD)` String,`No.` String,`Nationality` String,`Name` String,`Age` String</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from show_parsed_schemas((select * from pdf_blocks_billionaires)) where schema<> ''"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 39,
+                    "id": "9d9b0777-951d-4f6f-b7b1-e3c8de624919",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>No.</th>\n      <th>Name</th>\n      <th>Age</th>\n      <th>Net worth (USD)</th>\n      <th>Nationality</th>\n      <th>Primary source(s) of wealth</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td></td>\n      <td></td>\n      <td></td>\n      <td></td>\n      <td></td>\n      <td></td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>75</td>\n      <td>1</td>\n      <td>LVMH</td>\n      <td>Bernard Amault &amp; family</td>\n      <td>France</td>\n      <td>$233 billion</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>52</td>\n      <td>2 -</td>\n      <td>Tesla, SpaceX, Twitter (Currently</td>\n      <td>Elon Musk</td>\n      <td>South Africa Canada United States</td>\n      <td>$195 billion</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>60</td>\n      <td>3</td>\n      <td>Amazon</td>\n      <td>Jeff Bezos</td>\n      <td>United States</td>\n      <td>$194 billion</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>39</td>\n      <td>4 A</td>\n      <td>Meta Platforms</td>\n      <td>Mark Zuckerberg</td>\n      <td>United States</td>\n      <td>$177 billion</td>\n    </tr>\n    <tr>\n      <th>5</th>\n      <td>79</td>\n      <td>5</td>\n      <td>Oracle Corporation</td>\n      <td>Larry Ellison</td>\n      <td>United States</td>\n      <td>$141 billion</td>\n    </tr>\n    <tr>\n      <th>6</th>\n      <td>93</td>\n      <td>6</td>\n      <td>Berkshire Hathaway</td>\n      <td>Warren Buffett</td>\n      <td>United States</td>\n      <td>$133 billion</td>\n    </tr>\n    <tr>\n      <th>7</th>\n      <td>68</td>\n      <td>7</td>\n      <td>Microsoft</td>\n      <td>Bill Gates</td>\n      <td>United States</td>\n      <td>$128 billion</td>\n    </tr>\n    <tr>\n      <th>8</th>\n      <td>68</td>\n      <td>8 A</td>\n      <td>Microsoft</td>\n      <td>Steve Ballmer</td>\n      <td>United States</td>\n      <td>$121 billion</td>\n    </tr>\n    <tr>\n      <th>9</th>\n      <td>65</td>\n      <td>9</td>\n      <td>Reliance Industries</td>\n      <td>Mukesh Ambani</td>\n      <td>India</td>\n      <td>$116 billion</td>\n    </tr>\n    <tr>\n      <th>10</th>\n      <td>51</td>\n      <td>10</td>\n      <td>Google</td>\n      <td>Larry Page</td>\n      <td>United States</td>\n      <td>$114 billion</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from transpose_parsed_tables(table_index => 0, (select * from pdf_blocks_billionaires))"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "2e789a4c-2b65-4d66-9b50-544070d25678",
+                    "metadata": {},
+                    "source": "Check out the original table from the wikipedia page. As mentioned in other articles you can mix and match structured and \nunstructured data and use `pretty_print` function to feed data to the LLMs.\n\nYou can also directly convert this as a markdown using the schema provided to feed the entire document with layout to LLMs"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 41,
+                    "id": "cdaa3c94-dc32-4f8c-a4ee-45c8e2b2baa3",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>content</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>| Net worth (USD) | Primary source(s) of wealth | No.          | Name | Age                               | Nationality                       |\\n|-----------------|-----------------------------|--------------|------|-----------------------------------|-----------------------------------|\\n| null            | null                        | null         | null | null                              | null                              |\\n| 1               | Bernard Amault &amp; family     | $233 billion | 75   | France                            | LVMH                              |\\n| 2 -             | Elon Musk                   | $195 billion | 52   | South Africa Canada United States | Tesla, SpaceX, Twitter (Currently |\\n| 3               | Jeff Bezos                  | $194 billion | 60   | United States                     | Amazon                            |\\n| 4 A             | Mark Zuckerberg             | $177 billion | 39   | United States                     | Meta Platforms                    |\\n| 5               | Larry Ellison               | $141 billion | 79   | United States                     | Oracle Corporation                |\\n| 6               | Warren Buffett              | $133 billion | 93   | United States                     | Berkshire Hathaway                |\\n| 7               | Bill Gates                  | $128 billion | 68   | United States                     | Microsoft                         |\\n| 8 A             | Steve Ballmer               | $121 billion | 68   | United States                     | Microsoft                         |\\n| 9               | Mukesh Ambani               | $116 billion | 65   | India                             | Reliance Industries               |\\n| 10              | Larry Page                  | $114 billion | 51   | United States                     | Google                            |\\n ## 2023\\n In the 37th annual Forbes list of the world's billionaires, the list included 2,640 billionaires with a total net\\n wealth of $12.2 trillion, down 28 members and $500 billion from 2022. Over half of the list is less wealthy\\n compared to the previous year, including Elon Musk, who fell from No. 1 to No. 2. [7] The list also marks\\n for the first time a French citizen was in the top position as well as a non-American for the first time since\\n 2013 when the Mexican Carlos Slim Helu was the world's richest person. The list, like in 2022. counted 15\\n under 30 billionaires with the richest of them being Red Bull heir Mark Mateschitz with a net worth of\\n $34.7 billion. The youngest of the lot were Clemente Del Vecchio, heir to the Luxottica fortune shared with\\n his six siblings and stepmother, and Kim Jung-yang, whose fortune lies in Japanese-South Korean gaming\\n giant Nexon, both under-20s.(11)\\n</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select * from print_parsed_markdown((select * from pdf_blocks_billionaires))"
+                }
+            ],
+            "metadata": {
+                "kernelspec": {
+                    "display_name": "langdb",
+                    "language": "sql",
+                    "name": "langdb"
+                },
+                "language_info": {
+                    "codemirror_mode": "sql",
+                    "file_extension": ".sql",
+                    "mimetype": "text/x-sql",
+                    "name": "sql"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 5
+        },
+        "last_modified": "2024-07-03T14:23:52+07:00",
+        "created_at": "2024-07-03T14:23:52+07:00",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Structured%20Layout%20Extraction%20from%20PDFs%20and%20Images.ipynb",
+        "tags": [
+            "PDF",
+            "Getting Started"
+        ]
+    },
+    {
+        "title": "Working with Postgres, MySQL, MongoDB, and Others",
+        "content": {
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "id": "d65ff742-8329-4b4c-836c-87f5196e33ae",
+                    "metadata": {},
+                    "source": "# Working with Postgres, MySQL, MongoDB, and Others\nWith LangDB, you can seamlessly connect to your preexisting databases, including Postgres, MySQL, MongoDB, and many others. This capability allows you to leverage your existing data infrastructure without the need for significant modifications."
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "3e03ee52-278a-4e4b-8468-26b0cb9bf014",
+                    "metadata": {},
+                    "source": "## PostgreSQL"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "20066614-8701-4b5e-917f-c59edb88f6ea",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE TABLE [IF NOT EXISTS] table_name\n(\n    col_name1 type1 ,\n    col_name2 type2 ,\n    ...\n) ENGINE = PostgreSQL(host:port, database, table, user, password)"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "92ead7be-cd75-47d3-a52f-37b2b1f1a446",
+                    "metadata": {},
+                    "source": "## MySQL"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "301f7718-34fa-4299-a829-aaf424789c00",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE TABLE [IF NOT EXISTS] table_name \n(\n    col_name1 type1 ,\n    col_name2 type2 ,\n    ...\n) ENGINE = MySQL(host:port, database, table, user, password)"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "16b6b58a-a917-4884-8e06-d22de4996e75",
+                    "metadata": {},
+                    "source": "## MongoDB"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "b669fed1-321a-43d6-9d60-ac9a8c127a76",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE TABLE [IF NOT EXISTS] table_name\n(\n    col_name1 [type1],\n    col_name2 [type2],\n    ...\n) ENGINE = MongoDB(host:port, database, collection, user, password );"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "087b518f-4e5a-41b8-8525-1a9edca91b09",
+                    "metadata": {},
+                    "source": "Once connected., you can power your databases using LangDB. "
+                }
+            ],
+            "metadata": {
+                "kernelspec": {
+                    "display_name": "langdb",
+                    "language": "sql",
+                    "name": "langdb"
+                },
+                "language_info": {
+                    "codemirror_mode": "sql",
+                    "file_extension": ".sql",
+                    "mimetype": "text/x-sql",
+                    "name": "sql"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 5
+        },
+        "last_modified": "2024-08-05T13:27:26+05:30",
+        "created_at": "2024-07-24T17:58:29+05:30",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Working%20with%20Postgres,%20MySQL,%20MongoDB,%20and%20Others.ipynb",
+        "tags": [
+            "Postgres",
+            "MongoDB",
+            "MySQL",
             "Getting Started"
         ]
     },
@@ -1289,340 +1520,6 @@
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
             "PDF",
-            "RAG"
-        ]
-    },
-    {
-        "title": "Combining Insights from Structured and Unstructured Data using LangDB",
-        "content": {
-            "cells": [
-                {
-                    "cell_type": "markdown",
-                    "id": "328cb4cb-509e-4411-8bd4-dadf4edd49c9",
-                    "metadata": {},
-                    "source": "# Combining Structured and Unstructured Data\nWe will recreate an example use case from [LlamaIndex](https://docs.llamaindex.ai/en/stable/examples/query_engine/SQLJoinQueryEngine/).\nIn this example, we will create a model that will combine insights from structured data (SQL tables) and unstructured data (Wikipedia articles) to answer user queries. "
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "79a79bad-184c-4a98-bf42-4ecf5149d7c8",
-                    "metadata": {},
-                    "source": "## Schema Creation and Loading Data\nWe first create a cities table which contains information about different cities regarding their geographic location, population, and the country in which they are located."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "55f46dd6",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE TABLE cities (\n\t`id` UUID DEFAULT generateUUIDv4(),\n\t`city` String,\n\t`lat` Decimal64(3),\n\t`lng` Decimal64(3),\n\t`country` String,\n\t`population` UInt64\n) engine = MergeTree\nORDER BY id;"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "b201f9b5-eb22-44af-9eb0-23308eb60a2a",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "INSERT INTO cities(city, lat, lng, country, population) VALUES\n    ('Tokyo','35.6897','139.6922','Japan','37732000'),\n    ('Jakarta','-6.1750','106.8275','Indonesia','33756000'),\n    ('Delhi','28.6100','77.2300','India','32226000'),\n    ('Manila','14.5958','120.9772','Philippines','24922000'),\n    ('Dhaka','23.7639','90.3889','Bangladesh','18627000'),\n    ('Beijing','39.9067','116.3975','China','18522000'),\n    ('Moscow','55.7558','37.6172','Russia','17332000'),\n    ('Karachi','24.8600','67.0100','Pakistan','15738000'),\n    ('Ho Chi Minh City','10.7756','106.7019','Vietnam','15136000'),\n    ('Singapore','1.3000','103.8000','Singapore','5983000'),\n    ('Tashkent','41.3111','69.2797','Uzbekistan','2956384'),\n    ('Phnom Penh','11.5694','104.9211','Cambodia','2129371'),\n    ('Bishkek','42.8747','74.6122','Kyrgyzstan','1120827'),\n    ('Tbilisi','41.7225','44.7925','Georgia','1118035'),\n    ('Sri Jayewardenepura Kotte','6.9108','79.8878','Sri Lanka','115826');"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "a112e713",
-                    "metadata": {},
-                    "source": "### Loading the PDFs links\nWe create a pdfs table to store the PDFs containing information about the cities, obtained from Wikipedia. We extract semantically chunked data from the PDFs using the built-in function load_pdf_text(), and insert it into the tables."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 1,
-                    "id": "6940163f-1096-4b9d-a6d4-acc5f6fe4076",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE TABLE cities_links (\n\t`city` String,\n\t`link` String\n) engine = MergeTree\norder by city;"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "e43e3eff-c6e6-4e25-9cdd-5827e696f3b4",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "INSERT INTO cities_links(city, link) VALUES\n    ('Beijing','https://en.wikipedia.org/api/rest_v1/page/pdf/Beijing'),\n    ('Tokyo','https://en.wikipedia.org/api/rest_v1/page/pdf/Tokyo'),\n    ('Jakarta','https://en.wikipedia.org/api/rest_v1/page/pdf/Jakarta'),\n    ('Delhi','https://en.wikipedia.org/api/rest_v1/page/pdf/New_Delhi'),\n    ('Manila','https://en.wikipedia.org/api/rest_v1/page/pdf/Manila'),\n    ('Dhaka','https://en.wikipedia.org/api/rest_v1/page/pdf/Dhaka'),\n    ('Moscow','https://en.wikipedia.org/api/rest_v1/page/pdf/Moscow'),\n    ('Karachi','https://en.wikipedia.org/api/rest_v1/page/pdf/Karachi'),\n    ('Singapore','https://en.wikipedia.org/api/rest_v1/page/pdf/Singapore'),\n    ('Tashkent','https://en.wikipedia.org/api/rest_v1/page/pdf/Tashkent'),\n    ('Phnom Penh','https://en.wikipedia.org/api/rest_v1/page/pdf/Phnom_Penh'),\n    ('Bishkek','https://en.wikipedia.org/api/rest_v1/page/pdf/Bishkek'),\n    ('Tbilisi','https://en.wikipedia.org/api/rest_v1/page/pdf/Tbilisi'),\n    ('Sri Jayewardenepura Kotte','https://en.wikipedia.org/api/rest_v1/page/pdf/Sri_Jayawardenepura_Kotte'),\n    ('Ho Chi Minh City','https://en.wikipedia.org/api/rest_v1/page/pdf/Ho_Chi_Minh_City');"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "0b527626-271b-47cf-b9a5-270d44e10934",
-                    "metadata": {},
-                    "source": "## Loading the PDFs\nWe create a pdfs table to store the PDFs containing information about the cities, obtained from Wikipedia. We extract semantically chunked data from the PDFs using the built-in function load_pdf_text(), and insert it into the tables."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 4,
-                    "id": "c523ce6a-9f4c-43cd-9f47-e4bda8f97ef1",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE TABLE cities_pdf (\n  `id` UUID DEFAULT generateUUIDv4(),\n  `content` String, \n  `metadata` String, \n  `city` String\n) engine = MergeTree\norder by (id, content);"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 6,
-                    "id": "d1f1e71b-3e0a-4907-9f60-c0b951959592",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "INSERT INTO cities_pdf(content, metadata, city) \nSELECT content, metadata, JSONExtractString(metadata,'city')\nFROM load_pdf_text((SELECT link, city from cities_links));"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "fdb45e72",
-                    "metadata": {
-                        "jp-MarkdownHeadingCollapsed": true
-                    },
-                    "source": "### Using Provider\n\nWe will be reusing the `open_ai_provider` we created in [`Using Providers`](Using%20Providers.ipynb).\n\nIf you haven't created one yet, create one with the following command:"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "87260340",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-4o-mini'\n);"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "c66fe141-8a03-4231-ba8f-cde076b3980f",
-                    "metadata": {},
-                    "source": "## Embeddings\nLangDB offers a convenient method to generate embeddings using the custom embedding type model function for development and testing purposes. Additionally, we can use in-built `embed()` function to generate embeddings."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "81f1023b",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS generate_embeddings(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 22,
-                    "id": "f1341902-dad1-4b4e-9511-227ee039ec50",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE TABLE cities_embeddings (\n  id UUID,\n  embeddings `Array`(`Float32`),\n) \nengine = MergeTree\norder by id;"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "6c47e390-05cd-4dc8-9379-f14686f60d38",
-                    "metadata": {},
-                    "source": "While we can use `generate_embeddings()` to generate embeddings for each chunk and store them, we can also run the whole process in background using `SPAWN TASK` which essentially creates a cron job."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 36,
-                    "id": "3d386558-b4cd-477b-b4c8-51aab12261ec",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": "Spawned Task: generate_embeddings with id: e7f9e793-181e-490b-b56e-2c70958b0946"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "SPAWN TASK generate_embeddings_cities\nBEGIN\n    INSERT INTO cities_embeddings\n    select p.id, generate_embeddings(content) from cities_pdf as p LEFT JOIN cities_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 1 MINUTE\nWITH MAX_POOL_SIZE 5;"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "7ee88a0c-96ca-4177-bcc9-b11176e3224f",
-                    "metadata": {},
-                    "source": "## VIEW Creation\nFirst, we create view which utilize vector search to find relevant chunks. While the cities_info_generic could be utilized to get information about the query."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 24,
-                    "id": "3d554b8a-ad85-4aab-8ef8-8191fd19b30c",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE VIEW cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(generate_embeddings($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  cities_embeddings AS pe \nJOIN \n  cities_pdf AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5);"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "45668de6-c81a-4e8a-b8a9-0b6010f1c1e4",
-                    "metadata": {},
-                    "source": "### Using VIEW\n\nUsing the view to understand how similarity search works"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 20,
-                    "id": "9203b8c1-ec3c-499d-83c7-5288b076ffef",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>id</th>\n      <th>content</th>\n      <th>cosineDistance</th>\n      <th>city</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>0e6496a7-3048-469a-9b95-430c3b9bd1ea</td>\n      <td>Moscow was the host city of the 1980 Summer Olympics, with the yachting events being held at Tallinn, in present-day\\r\\nEstonia. Large sports facilities and the main international airport, Sheremetyevo Terminal 2, were built in preparation for\\r\\nthe 1980 Summer Olympics. Moscow had made a bid for the 2012 Summer\\r\\nOlympics. However, when final voting commenced on July 6, 2005, Moscow was\\r\\nthe first city to be eliminated from further rounds. The Games were awarded to\\r\\nLondon.\\r\\nThe most titled ice hockey team in the Soviet Union and in the world, HC CSKA\\r\\nMoscow comes from Moscow. Other big ice hockey clubs from Moscow are HC\\r\\nDynamo Moscow, which was the second most titled team in the Soviet Union, and\\r\\nHC Spartak Moscow.\\r\\nThe most titled Soviet, Russian, and one of the most titled Euroleague clubs, is the\\r\\nbasketball club from Moscow PBC CSKA Moscow. Moscow hosted the\\r\\nEuroBasket in 1953 and 1965.\\r\\nMoscow had more winners at the USSR and Russian Chess Championship than any other city.</td>\n      <td>0.167045</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>0e6496a7-3048-469a-9b95-430c3b9bd1ea</td>\n      <td>Moscow was the host city of the 1980 Summer Olympics, with the yachting events being held at Tallinn, in present-day\\r\\nEstonia. Large sports facilities and the main international airport, Sheremetyevo Terminal 2, were built in preparation for\\r\\nthe 1980 Summer Olympics. Moscow had made a bid for the 2012 Summer\\r\\nOlympics. However, when final voting commenced on July 6, 2005, Moscow was\\r\\nthe first city to be eliminated from further rounds. The Games were awarded to\\r\\nLondon.\\r\\nThe most titled ice hockey team in the Soviet Union and in the world, HC CSKA\\r\\nMoscow comes from Moscow. Other big ice hockey clubs from Moscow are HC\\r\\nDynamo Moscow, which was the second most titled team in the Soviet Union, and\\r\\nHC Spartak Moscow.\\r\\nThe most titled Soviet, Russian, and one of the most titled Euroleague clubs, is the\\r\\nbasketball club from Moscow PBC CSKA Moscow. Moscow hosted the\\r\\nEuroBasket in 1953 and 1965.\\r\\nMoscow had more winners at the USSR and Russian Chess Championship than any other city.</td>\n      <td>0.167045</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>ae687a62-73a5-411a-be00-46fedce90931</td>\n      <td>The Bolshoi Theatre\\r\\nThe Luzhniki Stadium hosted the\\r\\n1980 Summer Olympics and the\\r\\n2018 FIFA World Cup Final.\\r\\nSparrow Hills fanzone during 2018\\r\\nFIFA World Cup\\r\\nSC Olimpiyskiy was built for the\\r\\n1980 Summer Olympics.\\r\\nCSKAArena during a game of KHL,\\r\\nconsidered to be the second-best ice\\r\\nhockey league in the world\\r\\nMoscow will get its own branch of the Hermitage Museum in 2024, with authorities having agreed upon the final project, to be executed by Hani Rashid, co\u0002founder of New York-based 'Asymptote Architecture' - the same bureau that's behind the city's stock market building, the Busan-based World Business Center\\r\\nSolomon Tower and the Strata Tower in Abu-Dhabi.\\r\\n[136]\\r\\nMoscow is the heart of the Russian performing arts, including ballet and film, with 68\\r\\nmuseums\\r\\n[137] 103[138] theaters, 132 cinemas and 24 concert halls. Among Moscow's theaters\\r\\nand ballet studios is the Bolshoi Theatre and the Malyi Theatre\\r\\n[139] as well as Vakhtangov\\r\\nTheatre and Moscow Art Theatre.</td>\n      <td>0.167222</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>ae687a62-73a5-411a-be00-46fedce90931</td>\n      <td>The Bolshoi Theatre\\r\\nThe Luzhniki Stadium hosted the\\r\\n1980 Summer Olympics and the\\r\\n2018 FIFA World Cup Final.\\r\\nSparrow Hills fanzone during 2018\\r\\nFIFA World Cup\\r\\nSC Olimpiyskiy was built for the\\r\\n1980 Summer Olympics.\\r\\nCSKAArena during a game of KHL,\\r\\nconsidered to be the second-best ice\\r\\nhockey league in the world\\r\\nMoscow will get its own branch of the Hermitage Museum in 2024, with authorities having agreed upon the final project, to be executed by Hani Rashid, co\u0002founder of New York-based 'Asymptote Architecture' - the same bureau that's behind the city's stock market building, the Busan-based World Business Center\\r\\nSolomon Tower and the Strata Tower in Abu-Dhabi.\\r\\n[136]\\r\\nMoscow is the heart of the Russian performing arts, including ballet and film, with 68\\r\\nmuseums\\r\\n[137] 103[138] theaters, 132 cinemas and 24 concert halls. Among Moscow's theaters\\r\\nand ballet studios is the Bolshoi Theatre and the Malyi Theatre\\r\\n[139] as well as Vakhtangov\\r\\nTheatre and Moscow Art Theatre.</td>\n      <td>0.167222</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>77322727-8eb9-4671-a0ae-c40065bf4bcd</td>\n      <td>The China Central Television\\r\\nHeadquarters building in CBD\\r\\nA scene from the opening\\r\\nceremonies of the 2008 Summer\\r\\nOlympic Games\\r\\nBeijing Workers' Stadium at night as\\r\\nviewed from Sanlitun\\r\\nFamous rock bands and solo artists from Beijing include Cui Jian, Dou Wei, He Yong, Pu Shu, Tang\\r\\nDynasty, Black Panther, The Flowers, 43 Baojia Street, etc.\\r\\n[220]\\r\\nBeijing has hosted numerous international and national sporting events, the most notables was the 2008\\r\\nSummer Olympic and Paralympic Games and the 2022 Winter Olympics and the Paralympics. Other multi\u0002sport international events held in Beijing include the 2001 Summer Universiade and the 1990 Asian Games.\\r\\nSingle-sport international competitions include the Beijing Marathon (annually since 1981), China Open of\\r\\nTennis (1993–97, annually since 2004), ISU Grand Prix of Figure Skating Cup of China (2003, 2004, 2005,\\r\\n2008, 2009 and 2010), World Professional Billiards and Snooker Association China Open for Snooker</td>\n      <td>0.170085</td>\n      <td>Beijing</td>\n    </tr>\n  </tbody>\n</table>"
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "SELECT * from cities_info_generic('Olympics')"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "74e83fcd-ac3b-41f9-8246-df83e8d4ddb6",
-                    "metadata": {},
-                    "source": "We will also be using [`Text-to-SQL`](../getting_started/Text-to-SQL.ipynb) we created before to go over the cities table in the data to retrieve specific information."
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "d899d635-0429-43e5-b5cd-ea31d111f1ea",
-                    "metadata": {},
-                    "source": "## Prompt Creation\nWe create a prompt for our use case based on the ReAct framework."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "c0877078-ed54-43d2-9daa-0c720ddab3ed",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE PROMPT cities_prompt (\nsystem \"You are a master data agent specializing in providing information about cities. Your task is to answer user questions about cities using the available tools and data sources.\n\nTools at your disposal:\n1. query_model(table, question): Use this to retrieve data from the specified table in the database. For city-related queries, use the 'cities' table, which contains information such as population, latitude, longitude, and country.\n2. cities_info_generic(question): Use this for general information about cities using similarity search based on cosine distance.\n\nGuidelines for tool usage:\n- query_model: Prefer this tool when specific data points (population, location, country) are needed or when comparing multiple cities. Make your intent clear of what you want to search\n- cities_info_generic: Use this when the city is not known, or when seeking general information not available in the database.\n\nAlways follow these steps:\n1. Analyze the question to determine the best tool(s) to use.\n2. Use the chosen tool(s) to gather relevant information.\n3. Synthesize the gathered information to provide a comprehensive answer.\n\nOutput format:\nQuestion: [Restate the input question]\nThought: [Your reasoning about how to approach the question]\nAction: [The tool you decide to use]\nAction Input: [For query_model: {'question': 'Your specific question'}, For cities_info_generic: 'Your question']\nObservation: [The result returned by the tool]\n... (Repeat Thought/Action/Action Input/Observation as needed)\nThought: [Final reasoning about how to answer the question based on all gathered information]\nFinal Answer: [Comprehensive answer to the question, including:\n  - Direct response to the question\n  - Supporting data from the tools used\n  - If query_model was used, include the full SQL query\n  - Any relevant additional context or explanations]\n\nRemember:\n- Always use the tools to gather information; do not rely on prior knowledge.\n- Be thorough in your analysis and provide detailed, informative answers.\n- When using query_model, always formulate a clear, specific question for the SQL query. The output of query_model would be SQLQuery and SQLAnswer.\n- If the question is ambiguous, state your assumptions clearly in the final answer.\n\nBegin!\nQuestion: {{input}}\nThought: Let's start by analyzing the question and determining the best approach to answer it.\"\n);"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "903dca71-d6b9-44e9-8918-d7754b29a5e6",
-                    "metadata": {},
-                    "source": "## Model Creation\nNow, we can create the models that can leverage the tools that were created earlier."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 32,
-                    "id": "3ca4e299-0869-4cdd-af72-2c6107dce164",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": ""
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) USING open_ai_provider(model_name='gpt-4o')\nPROMPT cities_prompt\nTOOLS (\n    query_model COMMENT 'Text-to-SQL Model to query the database', \n    cities_info_generic COMMENT 'Vector Search on Cities Wiki Pages')\nSETTINGS retries = 3;"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "e5678d23-fd2f-4bfd-b161-f8fd9d6e0124",
-                    "metadata": {},
-                    "source": "Along with the tools we had created, we have also attached `langdb_raw_query`, a built-in static tool, which allows the model to execute raw SELECT (only) queries on the database."
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "30aef246-cfaf-43a8-ba0a-f3ed427162ea",
-                    "metadata": {},
-                    "source": "## Model Execution\nUsing the created model, we can execute queries which would require the LLM to use both structured (cities table) and unstructured (Wikipedia articles) data through the provided tools.\n"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 26,
-                    "id": "d250e355-a9e1-409d-8057-8197e1824a09",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": "Question: Tell me about the arts and culture of the city with the highest population\nThought: I need to understand the arts and culture of Tokyo, the city with the highest population.\nAction: Use cities_info_generic tool\nAction Input: query: \"Tokyo arts and culture\"\nObservation: The tool will provide information about the arts and culture of Tokyo.\n\nAction: functions.cities_info_generic\nAction Input: query: \"Tokyo arts and culture\"\n- Tokyo has a vibrant arts and culture scene. It is known for its traditional Japanese plays with venues like the National Noh Theatre and Kabuki-za. Additionally, the New National Theatre Tokyo in Shibuya hosts opera, ballet, contemporary dance, and drama performances.\n- Tokyo is home to numerous theatres including the National Theatre of Japan, the Imperial Theatre, Meiji-za, NHK Hall, Tokyo Metropolitan Theatre, Tokyo Opera City, and Tokyo International Forum.\n- The city offers a diverse array of leisure and entertainment options, featuring major aquariums like Shinagawa Aquarium, Tokyo Sea Life Park, Sunshine Aquarium, and Sumida Aquarium.\n- Tokyo has notable museums like the Tokyo Metropolitan Garden Art Museum in Minato and the Tobacco and Salt Museum in Sumida, which houses extensive collections.\n- The nightlife district of Tokyo is centered around areas like Shibuya, Shinjuku, and Roppongi, known for their bars, clubs, live music venues, and host and hostess clubs.\n- Tokyo is also famous for its festivals such as the SannÅ Matsuri, Sanja Festival, and Kanda Matsuri, featuring elaborately decorated floats and parades.\n\nFinal Answer: Tokyo, the city with the highest population, boasts a rich arts and culture scene with traditional Japanese plays, diverse theatres, museums, aquariums, and lively nightlife districts, along with vibrant festivals."
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "select cities_info_model('Tell me about the arts and culture of the city with the highest population');"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "24230b36-c168-473b-aa85-ad13c46346d1",
-                    "metadata": {},
-                    "source": "In the above query, the model generates a SQL query to find the city with the most populous city and invokes the `langdb_raw_query` tool to execute the generated query. It uses the result from the query, i.e. Tokyo, and invokes the `cities_info_generic` tool to get more information about the arts and culture of the city."
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": 27,
-                    "id": "3f1320f6-3a2a-4781-bdf3-e783346d3069",
-                    "metadata": {},
-                    "outputs": [
-                        {
-                            "data": {
-                                "text/plain": "The \"cities\" table in the database has the following schema:\n- id: UUID\n- city: String\n- lat: Decimal(18, 3)\n- lng: Decimal(18, 3)\n- country: String\n- population: UInt64\n\nThis schema includes information about cities such as city name, latitude, longitude, country, and population. Now, I can proceed to find the population of the city that conducted the 1964 Summer Olympics. Let's retrieve this information.Question: Whats the population of the city which conducted the 1964 Summer Olympics\nThought: I need to understand the semantics of the data structure available in the database.\nAction: Execute a raw SQL query to retrieve the population of Tokyo city.\nObservation: The population of Tokyo city is 37,732,000.\nThought: I think I have enough information to answer the question. Based on the data retrieved, I can now answer the question.\nFinal Answer: The population of Tokyo, the city that conducted the 1964 Summer Olympics, is 37,732,000."
-                            },
-                            "metadata": {},
-                            "output_type": "display_data"
-                        }
-                    ],
-                    "source": "select cities_info_model('Whats the population of the city which conducted the 1964 Summer Olympics');"
-                },
-                {
-                    "cell_type": "markdown",
-                    "id": "921f9434-ebf1-4689-a1b5-f6137f6d42af",
-                    "metadata": {},
-                    "source": "### Running the Chat\n\nWe can use the model created as chat"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "d3bc0349-2341-463d-b777-49caa9c02931",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CHAT cities_info_model"
-                }
-            ],
-            "metadata": {
-                "kernelspec": {
-                    "display_name": "langdb",
-                    "language": "sql",
-                    "name": "langdb"
-                },
-                "language_info": {
-                    "codemirror_mode": "sql",
-                    "file_extension": ".sql",
-                    "mimetype": "text/x-sql",
-                    "name": "sql"
-                }
-            },
-            "nbformat": 4,
-            "nbformat_minor": 5
-        },
-        "last_modified": "2024-07-24T15:17:39+05:30",
-        "created_at": "2024-07-09T10:53:11+05:30",
-        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20using%20LangDB.ipynb",
-        "tags": [
             "RAG"
         ]
     },
@@ -1976,6 +1873,340 @@
         "last_modified": "2024-07-24T15:17:39+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/CRAG.ipynb",
+        "tags": [
+            "RAG"
+        ]
+    },
+    {
+        "title": "Combining Insights from Structured and Unstructured Data using LangDB",
+        "content": {
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "id": "328cb4cb-509e-4411-8bd4-dadf4edd49c9",
+                    "metadata": {},
+                    "source": "# Combining Structured and Unstructured Data\nWe will recreate an example use case from [LlamaIndex](https://docs.llamaindex.ai/en/stable/examples/query_engine/SQLJoinQueryEngine/).\nIn this example, we will create a model that will combine insights from structured data (SQL tables) and unstructured data (Wikipedia articles) to answer user queries. "
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "79a79bad-184c-4a98-bf42-4ecf5149d7c8",
+                    "metadata": {},
+                    "source": "## Schema Creation and Loading Data\nWe first create a cities table which contains information about different cities regarding their geographic location, population, and the country in which they are located."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "55f46dd6",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE TABLE cities (\n\t`id` UUID DEFAULT generateUUIDv4(),\n\t`city` \"String\",\n\t`lat` Decimal64(3),\n\t`lng` Decimal64(3),\n\t`country` \"String\",\n\t`population` UInt64\n) engine = MergeTree\nORDER BY id;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "b201f9b5-eb22-44af-9eb0-23308eb60a2a",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "INSERT INTO cities(city, lat, lng, country, population) VALUES\n    ('Tokyo','35.6897','139.6922','Japan','37732000'),\n    ('Jakarta','-6.1750','106.8275','Indonesia','33756000'),\n    ('Delhi','28.6100','77.2300','India','32226000'),\n    ('Manila','14.5958','120.9772','Philippines','24922000'),\n    ('Dhaka','23.7639','90.3889','Bangladesh','18627000'),\n    ('Beijing','39.9067','116.3975','China','18522000'),\n    ('Moscow','55.7558','37.6172','Russia','17332000'),\n    ('Karachi','24.8600','67.0100','Pakistan','15738000'),\n    ('Ho Chi Minh City','10.7756','106.7019','Vietnam','15136000'),\n    ('Singapore','1.3000','103.8000','Singapore','5983000'),\n    ('Tashkent','41.3111','69.2797','Uzbekistan','2956384'),\n    ('Phnom Penh','11.5694','104.9211','Cambodia','2129371'),\n    ('Bishkek','42.8747','74.6122','Kyrgyzstan','1120827'),\n    ('Tbilisi','41.7225','44.7925','Georgia','1118035'),\n    ('Sri Jayewardenepura Kotte','6.9108','79.8878','Sri Lanka','115826');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "a112e713",
+                    "metadata": {},
+                    "source": "### Loading the PDFs links\nWe create a pdfs table to store the PDFs containing information about the cities, obtained from Wikipedia. We extract semantically chunked data from the PDFs using the built-in function load_pdf_text(), and insert it into the tables."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 1,
+                    "id": "6940163f-1096-4b9d-a6d4-acc5f6fe4076",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE cities_links (\n\t`city` \"String\",\n\t`link` \"String\"\n) engine = MergeTree\norder by city;"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "e43e3eff-c6e6-4e25-9cdd-5827e696f3b4",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "INSERT INTO cities_links(city, link) VALUES\n    ('Beijing','https://en.wikipedia.org/api/rest_v1/page/pdf/Beijing'),\n    ('Tokyo','https://en.wikipedia.org/api/rest_v1/page/pdf/Tokyo'),\n    ('Jakarta','https://en.wikipedia.org/api/rest_v1/page/pdf/Jakarta'),\n    ('Delhi','https://en.wikipedia.org/api/rest_v1/page/pdf/New_Delhi'),\n    ('Manila','https://en.wikipedia.org/api/rest_v1/page/pdf/Manila'),\n    ('Dhaka','https://en.wikipedia.org/api/rest_v1/page/pdf/Dhaka'),\n    ('Moscow','https://en.wikipedia.org/api/rest_v1/page/pdf/Moscow'),\n    ('Karachi','https://en.wikipedia.org/api/rest_v1/page/pdf/Karachi'),\n    ('Singapore','https://en.wikipedia.org/api/rest_v1/page/pdf/Singapore'),\n    ('Tashkent','https://en.wikipedia.org/api/rest_v1/page/pdf/Tashkent'),\n    ('Phnom Penh','https://en.wikipedia.org/api/rest_v1/page/pdf/Phnom_Penh'),\n    ('Bishkek','https://en.wikipedia.org/api/rest_v1/page/pdf/Bishkek'),\n    ('Tbilisi','https://en.wikipedia.org/api/rest_v1/page/pdf/Tbilisi'),\n    ('Sri Jayewardenepura Kotte','https://en.wikipedia.org/api/rest_v1/page/pdf/Sri_Jayawardenepura_Kotte'),\n    ('Ho Chi Minh City','https://en.wikipedia.org/api/rest_v1/page/pdf/Ho_Chi_Minh_City');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "0b527626-271b-47cf-b9a5-270d44e10934",
+                    "metadata": {},
+                    "source": "## Loading the PDFs\nWe create a pdfs table to store the PDFs containing information about the cities, obtained from Wikipedia. We extract semantically chunked data from the PDFs using the built-in function load_pdf_text(), and insert it into the tables."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 4,
+                    "id": "c523ce6a-9f4c-43cd-9f47-e4bda8f97ef1",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE cities_pdf (\n  `id` UUID DEFAULT generateUUIDv4(),\n  `content` \"String\", \n  `metadata` \"String\", \n  `city` \"String\"\n) engine = MergeTree\norder by (id, content);"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 6,
+                    "id": "d1f1e71b-3e0a-4907-9f60-c0b951959592",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "INSERT INTO cities_pdf(content, metadata, city) \nSELECT content, metadata, JSONExtractString(metadata,'city')\nFROM load_pdf_text((SELECT link, city from cities_links));"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "fdb45e72",
+                    "metadata": {
+                        "jp-MarkdownHeadingCollapsed": true
+                    },
+                    "source": "### Using Provider\n\nWe will be reusing the `open_ai_provider` we created in [`Using Providers`](Using%20Providers.ipynb).\n\nIf you haven't created one yet, create one with the following command:"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "87260340",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-4o-mini'\n);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "c66fe141-8a03-4231-ba8f-cde076b3980f",
+                    "metadata": {},
+                    "source": "## Embeddings\nLangDB offers a convenient method to generate embeddings using the custom embedding type model function for development and testing purposes. Additionally, we can use in-built `embed()` function to generate embeddings."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "81f1023b",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE EMBEDDING MODEL IF NOT EXISTS generate_embeddings(\ninput COMMENT 'This is the input of the content whose embeddings are created'\n) USING open_ai_provider(embedding_model='text-embedding-ada-002', encoding_format='float', dimensions=100)"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 22,
+                    "id": "f1341902-dad1-4b4e-9511-227ee039ec50",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE TABLE cities_embeddings (\n  id UUID,\n  embeddings `Array`(`Float32`),\n) \nengine = MergeTree\norder by id;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "6c47e390-05cd-4dc8-9379-f14686f60d38",
+                    "metadata": {},
+                    "source": "While we can use `generate_embeddings()` to generate embeddings for each chunk and store them, we can also run the whole process in background using `SPAWN TASK` which essentially creates a cron job."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 36,
+                    "id": "3d386558-b4cd-477b-b4c8-51aab12261ec",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": "Spawned Task: generate_embeddings with id: e7f9e793-181e-490b-b56e-2c70958b0946"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "SPAWN TASK generate_embeddings_cities\nBEGIN\n    INSERT INTO cities_embeddings\n    select p.id, generate_embeddings(content) from cities_pdf as p LEFT JOIN cities_embeddings as pe on p.id = pe.id\n    where p.id != pe.id\n    order by p.id\n    limit 10\nEND \nEVERY 1 MINUTE\nWITH MAX_POOL_SIZE 5;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "7ee88a0c-96ca-4177-bcc9-b11176e3224f",
+                    "metadata": {},
+                    "source": "## VIEW Creation\nFirst, we create view which utilize vector search to find relevant chunks. While the cities_info_generic could be utilized to get information about the query."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 24,
+                    "id": "3d554b8a-ad85-4aab-8ef8-8191fd19b30c",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE VIEW cities_info_generic(query String \"description of the information to look up about cities\") AS\n(WITH tbl AS (\n  SELECT CAST(generate_embeddings($query) AS `Array`(`Float32`)) AS query\n)\nSELECT \n  p.id as id, \n  p.content as content, \n  cosineDistance(embeddings, query) AS cosineDistance,\n  p.city as city\nFROM \n  cities_embeddings AS pe \nJOIN \n  cities_pdf AS p ON p.id = pe.id\nCROSS JOIN \n  tbl \nORDER BY \n  cosineDistance ASC\n  LIMIT 5);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "45668de6-c81a-4e8a-b8a9-0b6010f1c1e4",
+                    "metadata": {},
+                    "source": "### Using VIEW\n\nUsing the view to understand how similarity search works"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 20,
+                    "id": "9203b8c1-ec3c-499d-83c7-5288b076ffef",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/html": "<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>id</th>\n      <th>content</th>\n      <th>cosineDistance</th>\n      <th>city</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>0e6496a7-3048-469a-9b95-430c3b9bd1ea</td>\n      <td>Moscow was the host city of the 1980 Summer Olympics, with the yachting events being held at Tallinn, in present-day\\r\\nEstonia. Large sports facilities and the main international airport, Sheremetyevo Terminal 2, were built in preparation for\\r\\nthe 1980 Summer Olympics. Moscow had made a bid for the 2012 Summer\\r\\nOlympics. However, when final voting commenced on July 6, 2005, Moscow was\\r\\nthe first city to be eliminated from further rounds. The Games were awarded to\\r\\nLondon.\\r\\nThe most titled ice hockey team in the Soviet Union and in the world, HC CSKA\\r\\nMoscow comes from Moscow. Other big ice hockey clubs from Moscow are HC\\r\\nDynamo Moscow, which was the second most titled team in the Soviet Union, and\\r\\nHC Spartak Moscow.\\r\\nThe most titled Soviet, Russian, and one of the most titled Euroleague clubs, is the\\r\\nbasketball club from Moscow PBC CSKA Moscow. Moscow hosted the\\r\\nEuroBasket in 1953 and 1965.\\r\\nMoscow had more winners at the USSR and Russian Chess Championship than any other city.</td>\n      <td>0.167045</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>0e6496a7-3048-469a-9b95-430c3b9bd1ea</td>\n      <td>Moscow was the host city of the 1980 Summer Olympics, with the yachting events being held at Tallinn, in present-day\\r\\nEstonia. Large sports facilities and the main international airport, Sheremetyevo Terminal 2, were built in preparation for\\r\\nthe 1980 Summer Olympics. Moscow had made a bid for the 2012 Summer\\r\\nOlympics. However, when final voting commenced on July 6, 2005, Moscow was\\r\\nthe first city to be eliminated from further rounds. The Games were awarded to\\r\\nLondon.\\r\\nThe most titled ice hockey team in the Soviet Union and in the world, HC CSKA\\r\\nMoscow comes from Moscow. Other big ice hockey clubs from Moscow are HC\\r\\nDynamo Moscow, which was the second most titled team in the Soviet Union, and\\r\\nHC Spartak Moscow.\\r\\nThe most titled Soviet, Russian, and one of the most titled Euroleague clubs, is the\\r\\nbasketball club from Moscow PBC CSKA Moscow. Moscow hosted the\\r\\nEuroBasket in 1953 and 1965.\\r\\nMoscow had more winners at the USSR and Russian Chess Championship than any other city.</td>\n      <td>0.167045</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>ae687a62-73a5-411a-be00-46fedce90931</td>\n      <td>The Bolshoi Theatre\\r\\nThe Luzhniki Stadium hosted the\\r\\n1980 Summer Olympics and the\\r\\n2018 FIFA World Cup Final.\\r\\nSparrow Hills fanzone during 2018\\r\\nFIFA World Cup\\r\\nSC Olimpiyskiy was built for the\\r\\n1980 Summer Olympics.\\r\\nCSKAArena during a game of KHL,\\r\\nconsidered to be the second-best ice\\r\\nhockey league in the world\\r\\nMoscow will get its own branch of the Hermitage Museum in 2024, with authorities having agreed upon the final project, to be executed by Hani Rashid, co\u0002founder of New York-based 'Asymptote Architecture' - the same bureau that's behind the city's stock market building, the Busan-based World Business Center\\r\\nSolomon Tower and the Strata Tower in Abu-Dhabi.\\r\\n[136]\\r\\nMoscow is the heart of the Russian performing arts, including ballet and film, with 68\\r\\nmuseums\\r\\n[137] 103[138] theaters, 132 cinemas and 24 concert halls. Among Moscow's theaters\\r\\nand ballet studios is the Bolshoi Theatre and the Malyi Theatre\\r\\n[139] as well as Vakhtangov\\r\\nTheatre and Moscow Art Theatre.</td>\n      <td>0.167222</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>ae687a62-73a5-411a-be00-46fedce90931</td>\n      <td>The Bolshoi Theatre\\r\\nThe Luzhniki Stadium hosted the\\r\\n1980 Summer Olympics and the\\r\\n2018 FIFA World Cup Final.\\r\\nSparrow Hills fanzone during 2018\\r\\nFIFA World Cup\\r\\nSC Olimpiyskiy was built for the\\r\\n1980 Summer Olympics.\\r\\nCSKAArena during a game of KHL,\\r\\nconsidered to be the second-best ice\\r\\nhockey league in the world\\r\\nMoscow will get its own branch of the Hermitage Museum in 2024, with authorities having agreed upon the final project, to be executed by Hani Rashid, co\u0002founder of New York-based 'Asymptote Architecture' - the same bureau that's behind the city's stock market building, the Busan-based World Business Center\\r\\nSolomon Tower and the Strata Tower in Abu-Dhabi.\\r\\n[136]\\r\\nMoscow is the heart of the Russian performing arts, including ballet and film, with 68\\r\\nmuseums\\r\\n[137] 103[138] theaters, 132 cinemas and 24 concert halls. Among Moscow's theaters\\r\\nand ballet studios is the Bolshoi Theatre and the Malyi Theatre\\r\\n[139] as well as Vakhtangov\\r\\nTheatre and Moscow Art Theatre.</td>\n      <td>0.167222</td>\n      <td>Moscow</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>77322727-8eb9-4671-a0ae-c40065bf4bcd</td>\n      <td>The China Central Television\\r\\nHeadquarters building in CBD\\r\\nA scene from the opening\\r\\nceremonies of the 2008 Summer\\r\\nOlympic Games\\r\\nBeijing Workers' Stadium at night as\\r\\nviewed from Sanlitun\\r\\nFamous rock bands and solo artists from Beijing include Cui Jian, Dou Wei, He Yong, Pu Shu, Tang\\r\\nDynasty, Black Panther, The Flowers, 43 Baojia Street, etc.\\r\\n[220]\\r\\nBeijing has hosted numerous international and national sporting events, the most notables was the 2008\\r\\nSummer Olympic and Paralympic Games and the 2022 Winter Olympics and the Paralympics. Other multi\u0002sport international events held in Beijing include the 2001 Summer Universiade and the 1990 Asian Games.\\r\\nSingle-sport international competitions include the Beijing Marathon (annually since 1981), China Open of\\r\\nTennis (1993–97, annually since 2004), ISU Grand Prix of Figure Skating Cup of China (2003, 2004, 2005,\\r\\n2008, 2009 and 2010), World Professional Billiards and Snooker Association China Open for Snooker</td>\n      <td>0.170085</td>\n      <td>Beijing</td>\n    </tr>\n  </tbody>\n</table>"
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "SELECT * from cities_info_generic('Olympics')"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "74e83fcd-ac3b-41f9-8246-df83e8d4ddb6",
+                    "metadata": {},
+                    "source": "We will also be using [`Text-to-SQL`](../getting_started/Text-to-SQL.ipynb) we created before to go over the cities table in the data to retrieve specific information."
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "d899d635-0429-43e5-b5cd-ea31d111f1ea",
+                    "metadata": {},
+                    "source": "## Prompt Creation\nWe create a prompt for our use case based on the ReAct framework."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "c0877078-ed54-43d2-9daa-0c720ddab3ed",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CREATE PROMPT cities_prompt (\nsystem \"You are a master data agent specializing in providing information about cities. Your task is to answer user questions about cities using the available tools and data sources.\n\nTools at your disposal:\n1. text_to_sql( question): Use this to retrieve data from the specified table in the database. For city-related queries, use the 'cities' table, which contains information such as population, latitude, longitude, and country.\n2. cities_info_generic(question): Use this for general information about cities using similarity search based on cosine distance.\n\nGuidelines for tool usage:\n- text_to_sql: Prefer this tool when specific data points (population, location, country) are needed or when comparing multiple cities. Make your intent clear of what you want to search\n- cities_info_generic: Use this when the city is not known, or when seeking general information not available in the database.\n\nAlways follow these steps:\n1. Analyze the question to determine the best tool(s) to use.\n2. Use the chosen tool(s) to gather relevant information.\n3. Synthesize the gathered information to provide a comprehensive answer.\n\nOutput format:\nQuestion: [Restate the input question]\nThought: [Your reasoning about how to approach the question]\nAction: [The tool you decide to use]\nAction Input: [For text_to_sql: {'question': 'Your specific question'}, For cities_info_generic: 'Your question']\nObservation: [The result returned by the tool]\n... (Repeat Thought/Action/Action Input/Observation as needed)\nThought: [Final reasoning about how to answer the question based on all gathered information]\nFinal Answer: [Comprehensive answer to the question, including:\n  - Direct response to the question\n  - Supporting data from the tools used\n  - If text_to_sql was used, include the full SQL query\n  - Any relevant additional context or explanations]\n\nRemember:\n- Always use the tools to gather information; do not rely on prior knowledge.\n- Be thorough in your analysis and provide detailed, informative answers.\n- When using text_to_sql, always formulate a clear, specific question for the SQL query. The output of query_model would be SQLQuery and SQLAnswer.\n- If the question is ambiguous, state your assumptions clearly in the final answer.\n\nBegin!\nQuestion: {{input}}\nThought: Let's start by analyzing the question and determining the best approach to answer it.\"\n);"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "903dca71-d6b9-44e9-8918-d7754b29a5e6",
+                    "metadata": {},
+                    "source": "## Model Creation\nNow, we can create the models that can leverage the tools that were created earlier."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 32,
+                    "id": "3ca4e299-0869-4cdd-af72-2c6107dce164",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": ""
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "CREATE MODEL IF NOT EXISTS cities_info_model( \n    input\n) USING open_ai_provider(model_name='gpt-4o')\nPROMPT cities_prompt\nTOOLS (\n    text_to_sql COMMENT 'Text-to-SQL Model to query the database', \n    cities_info_generic COMMENT 'Vector Search on Cities Wiki Pages')\nSETTINGS retries = 3;"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "e5678d23-fd2f-4bfd-b161-f8fd9d6e0124",
+                    "metadata": {},
+                    "source": "Along with the tools we had created, we have also attached `langdb_raw_query`, a built-in static tool, which allows the model to execute raw SELECT (only) queries on the database."
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "30aef246-cfaf-43a8-ba0a-f3ed427162ea",
+                    "metadata": {},
+                    "source": "## Model Execution\nUsing the created model, we can execute queries which would require the LLM to use both structured (cities table) and unstructured (Wikipedia articles) data through the provided tools.\n"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 26,
+                    "id": "d250e355-a9e1-409d-8057-8197e1824a09",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": "Question: Tell me about the arts and culture of the city with the highest population\nThought: I need to understand the arts and culture of Tokyo, the city with the highest population.\nAction: Use cities_info_generic tool\nAction Input: query: \"Tokyo arts and culture\"\nObservation: The tool will provide information about the arts and culture of Tokyo.\n\nAction: functions.cities_info_generic\nAction Input: query: \"Tokyo arts and culture\"\n- Tokyo has a vibrant arts and culture scene. It is known for its traditional Japanese plays with venues like the National Noh Theatre and Kabuki-za. Additionally, the New National Theatre Tokyo in Shibuya hosts opera, ballet, contemporary dance, and drama performances.\n- Tokyo is home to numerous theatres including the National Theatre of Japan, the Imperial Theatre, Meiji-za, NHK Hall, Tokyo Metropolitan Theatre, Tokyo Opera City, and Tokyo International Forum.\n- The city offers a diverse array of leisure and entertainment options, featuring major aquariums like Shinagawa Aquarium, Tokyo Sea Life Park, Sunshine Aquarium, and Sumida Aquarium.\n- Tokyo has notable museums like the Tokyo Metropolitan Garden Art Museum in Minato and the Tobacco and Salt Museum in Sumida, which houses extensive collections.\n- The nightlife district of Tokyo is centered around areas like Shibuya, Shinjuku, and Roppongi, known for their bars, clubs, live music venues, and host and hostess clubs.\n- Tokyo is also famous for its festivals such as the SannÅ Matsuri, Sanja Festival, and Kanda Matsuri, featuring elaborately decorated floats and parades.\n\nFinal Answer: Tokyo, the city with the highest population, boasts a rich arts and culture scene with traditional Japanese plays, diverse theatres, museums, aquariums, and lively nightlife districts, along with vibrant festivals."
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select cities_info_model('Tell me about the arts and culture of the city with the highest population');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "24230b36-c168-473b-aa85-ad13c46346d1",
+                    "metadata": {},
+                    "source": "In the above query, the model generates a SQL query to find the city with the most populous city and invokes the `langdb_raw_query` tool to execute the generated query. It uses the result from the query, i.e. Tokyo, and invokes the `cities_info_generic` tool to get more information about the arts and culture of the city."
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": 27,
+                    "id": "3f1320f6-3a2a-4781-bdf3-e783346d3069",
+                    "metadata": {},
+                    "outputs": [
+                        {
+                            "data": {
+                                "text/plain": "The \"cities\" table in the database has the following schema:\n- id: UUID\n- city: String\n- lat: Decimal(18, 3)\n- lng: Decimal(18, 3)\n- country: String\n- population: UInt64\n\nThis schema includes information about cities such as city name, latitude, longitude, country, and population. Now, I can proceed to find the population of the city that conducted the 1964 Summer Olympics. Let's retrieve this information.Question: Whats the population of the city which conducted the 1964 Summer Olympics\nThought: I need to understand the semantics of the data structure available in the database.\nAction: Execute a raw SQL query to retrieve the population of Tokyo city.\nObservation: The population of Tokyo city is 37,732,000.\nThought: I think I have enough information to answer the question. Based on the data retrieved, I can now answer the question.\nFinal Answer: The population of Tokyo, the city that conducted the 1964 Summer Olympics, is 37,732,000."
+                            },
+                            "metadata": {},
+                            "output_type": "display_data"
+                        }
+                    ],
+                    "source": "select cities_info_model('Whats the population of the city which conducted the 1964 Summer Olympics');"
+                },
+                {
+                    "cell_type": "markdown",
+                    "id": "921f9434-ebf1-4689-a1b5-f6137f6d42af",
+                    "metadata": {},
+                    "source": "### Running the Chat\n\nWe can use the model created as chat"
+                },
+                {
+                    "cell_type": "code",
+                    "execution_count": null,
+                    "id": "d3bc0349-2341-463d-b777-49caa9c02931",
+                    "metadata": {},
+                    "outputs": [],
+                    "source": "CHAT cities_info_model"
+                }
+            ],
+            "metadata": {
+                "kernelspec": {
+                    "display_name": "langdb",
+                    "language": "sql",
+                    "name": "langdb"
+                },
+                "language_info": {
+                    "codemirror_mode": "sql",
+                    "file_extension": ".sql",
+                    "mimetype": "text/x-sql",
+                    "name": "sql"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 5
+        },
+        "last_modified": "2024-08-07T12:49:00+05:30",
+        "created_at": "2024-07-09T10:53:11+05:30",
+        "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/Combining%20Insights%20from%20Structured%20and%20Unstructured%20Data%20using%20LangDB.ipynb",
         "tags": [
             "RAG"
         ]
