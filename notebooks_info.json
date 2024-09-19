@@ -2637,7 +2637,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL IF NOT EXISTS search1(\n  input\n) USING openai(model_name= 'gpt-4o-mini')\nPROMPT (system \"You are a helpful assistant. You have been provided with similar tool to search over the SEC fillings. \n                 Your task is also to help users with any queries they might have about the SEC filings. \n                 Go through all the content and then respond.\",\n  human \"{{input}}\")\nTOOLS (\n    similar COMMENT 'View to search embeddings of the PDF'\n)\nSETTINGS retries = 1;"
+                    "source": "CREATE MODEL IF NOT EXISTS search(\n  input\n) USING openai(model_name= 'gpt-4o-mini')\nPROMPT (system \"You are a helpful assistant. You have been provided with similar tool to search over the SEC fillings. \n                 Your task is also to help users with any queries they might have about the SEC filings. \n                 Go through all the content and then respond.\",\n  human \"{{input}}\")\nTOOLS (\n    similar COMMENT 'View to search embeddings of the PDF'\n)\nSETTINGS retries = 1;"
                 },
                 {
                     "cell_type": "markdown",
@@ -2668,7 +2668,7 @@
             "nbformat": 4,
             "nbformat_minor": 4
         },
-        "last_modified": "2024-09-19T17:18:31+05:30",
+        "last_modified": "2024-09-19T17:20:10+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
