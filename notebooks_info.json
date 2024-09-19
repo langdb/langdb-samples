@@ -2498,13 +2498,6 @@
                     "source": "SELECT * FROM pdf_chunks LIMIT 2;"
                 },
                 {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE PROVIDER open_ai_provider\nENGINE = OpenAI(\n\tapi_key='sk-proj-xxx',\n\tmodel_name = 'gpt-4o-mini'\n);"
-                },
-                {
                     "cell_type": "markdown",
                     "metadata": {},
                     "source": "### Embeddings\nLangDB offers a convenient method to generate embeddings using the custom embedding type model function for development and testing purposes."
@@ -2675,7 +2668,7 @@
             "nbformat": 4,
             "nbformat_minor": 4
         },
-        "last_modified": "2024-09-18T10:55:48+05:30",
+        "last_modified": "2024-09-19T17:18:31+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/QA%20on%20PDF%20&%20RAG%20using%20LangDB.ipynb",
         "tags": [
