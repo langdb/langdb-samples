@@ -1103,7 +1103,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE TABLE pdf_blocks_billionaires\nENGINE = Memory AS\nSELECT * FROM extract_layout(\n(select * from load (\n \n    'https://en.wikipedia.org/api/rest_v1/page/pdf/The_World%27s_Billionaires'\n)), type=> 'PDF', page_range=> [2,3])"
+                    "source": "CREATE TABLE pdf_blocks_billionaires\nENGINE = Memory AS\nSELECT page, block_idx, block_id, block_type, row_id, col_id, text, confidence, entity_types, relationships  FROM extract_layout(\n    'https://en.wikipedia.org/api/rest_v1/page/pdf/The_World%27s_Billionaires'\n , type=> 'PDF', page_range=> [2,3])"
                 },
                 {
                     "cell_type": "markdown",
@@ -1204,7 +1204,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-08-22T12:16:51+05:30",
+        "last_modified": "2024-09-23T17:40:51+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/getting_started/Structured%20Layout%20Extraction%20from%20PDFs%20and%20Images.ipynb",
         "tags": [
@@ -1519,14 +1519,14 @@
                             "output_type": "execute_result"
                         }
                     ],
-                    "source": "INSERT INTO resume_data_raw(raw)\nselect content as text from extract_text((\n    select content as file from load((\n            select arrayJoin([\n    's3://langdb-sample-data/ACCOUNTANT/12202337.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/14470533.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/15821633.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/23416654.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/20253563.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/20345168.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/20393721.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/20624984.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/21031285.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/21338490.pdf', \n    's3://langdb-sample-data/ACCOUNTANT/23513618.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/23636277.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/23734441.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/24103168.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/24294778.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/25067742.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/25127518.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/25547145.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/25846894.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/26065877.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/27573855.pdf', --\n    's3://langdb-sample-data/ACCOUNTANT/31602598.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/33527446.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/34198885.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/34816637.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/36425270.pdf',\n    's3://langdb-sample-data/ACCOUNTANT/37997506.pdf']) \n    ))\n),\npath => file, type => 'pdf') "
+                    "source": "INSERT INTO resume_data_raw(raw)\nselect content as text from extract_text((\n    select content as file from load((\n            select arrayJoin([\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/12202337.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/14470533.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/15821633.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/23416654.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/20253563.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/20345168.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/20393721.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/20624984.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/21031285.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/21338490.pdf', \n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/23513618.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/23636277.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/23734441.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/24103168.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/24294778.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/25067742.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/25127518.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/25547145.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/25846894.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/26065877.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/27573855.pdf', --\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/31602598.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/33527446.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/34198885.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/34816637.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/36425270.pdf',\n    'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ACCOUNTANT/37997506.pdf']) \n    ))\n),\npath => file, type => 'pdf') "
                 },
                 {
                     "cell_type": "code",
                     "execution_count": null,
                     "metadata": {},
                     "outputs": [],
-                    "source": "INSERT INTO resume_data_raw(raw)\nselect content from extract_text((\n    select content as file from load((\n            select arrayJoin([\n     's3://langdb-sample-data/ENGINEERING/10030015.pdf',\n     's3://langdb-sample-data/ENGINEERING/10219099.pdf',\n     's3://langdb-sample-data/ENGINEERING/10624813.pdf',\n     's3://langdb-sample-data/ENGINEERING/10712803.pdf',\n     's3://langdb-sample-data/ENGINEERING/10985403.pdf',\n     's3://langdb-sample-data/ENGINEERING/11890896.pdf',\n     's3://langdb-sample-data/ENGINEERING/11981094.pdf',\n     's3://langdb-sample-data/ENGINEERING/12011623.pdf',\n     's3://langdb-sample-data/ENGINEERING/12022566.pdf',\n     's3://langdb-sample-data/ENGINEERING/12472574.pdf',\n     's3://langdb-sample-data/ENGINEERING/12488356.pdf',\n     's3://langdb-sample-data/ENGINEERING/12518008.pdf',\n     's3://langdb-sample-data/ENGINEERING/12748557.pdf',\n     's3://langdb-sample-data/ENGINEERING/13149176.pdf',\n     's3://langdb-sample-data/ENGINEERING/13264796.pdf',\n     's3://langdb-sample-data/ENGINEERING/14049846.pdf',\n     's3://langdb-sample-data/ENGINEERING/14206561.pdf',\n     's3://langdb-sample-data/ENGINEERING/14554542.pdf',\n     's3://langdb-sample-data/ENGINEERING/15139979.pdf',\n     's3://langdb-sample-data/ENGINEERING/15601399.pdf',\n     's3://langdb-sample-data/ENGINEERING/15858254.pdf',\n     's3://langdb-sample-data/ENGINEERING/15941675.pdf',\n     's3://langdb-sample-data/ENGINEERING/16803215.pdf',\n     's3://langdb-sample-data/ENGINEERING/16911115.pdf',\n     's3://langdb-sample-data/ENGINEERING/17103000.pdf',\n     's3://langdb-sample-data/ENGINEERING/17108676.pdf',\n     's3://langdb-sample-data/ENGINEERING/17488801.pdf'\n]) \n    ))\n),\npath => file, type => 'pdf') "
+                    "source": "INSERT INTO resume_data_raw(raw)\nselect content from extract_text((\n    select content as file from load((\n            select arrayJoin([\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/10030015.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/10219099.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/10624813.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/10712803.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/10985403.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/11890896.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/11981094.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/12011623.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/12022566.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/12472574.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/12488356.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/12518008.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/12748557.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/13149176.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/13264796.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/14049846.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/14206561.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/14554542.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/15139979.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/15601399.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/15858254.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/15941675.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/16803215.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/16911115.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/17103000.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/17108676.pdf',\n     'https://langdb-sample-data.s3.ap-southeast-1.amazonaws.com/ENGINEERING/17488801.pdf'\n]) \n    ))\n),\npath => file, type => 'pdf') "
                 },
                 {
                     "cell_type": "code",
@@ -1742,7 +1742,7 @@
             "nbformat": 4,
             "nbformat_minor": 4
         },
-        "last_modified": "2024-09-18T09:44:33+05:30",
+        "last_modified": "2024-09-23T14:21:53+05:30",
         "created_at": "2024-08-23T11:11:29+05:30",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/Building%20a%20HR%20assistant%20using%20LLMs.ipynb",
         "tags": [
@@ -1813,7 +1813,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE TABLE pdf_contents (\n    id `Int64`,\n    content `String`,\n    link `String`\n)\nENGINE = MergeTree\nORDER BY content;"
+                    "source": "CREATE TABLE pdf_contents (\n    id UUID DEFAULT generateUUIDv4(),\n    content `String`,\n    link `String`\n)\nENGINE = MergeTree\nORDER BY content;"
                 },
                 {
                     "cell_type": "code",
@@ -1837,7 +1837,7 @@
                     "id": "ffa06530-1359-431a-a325-049c1d14f09e",
                     "metadata": {},
                     "outputs": [],
-                    "source": "INSERT INTO pdf_contents(link, content)\nselect link, text from chunk((\nSELECT  content, link FROM\nextract_text((SELECT link from pdf_links), path=> link, type=> 'html')),\n    chunk_size => 500, \n    type => 'Word'\n) "
+                    "source": "INSERT INTO pdf_contents(link, content)\nselect link, content from load_html((SELECT link from pdf_links), path=> link)"
                 },
                 {
                     "cell_type": "markdown",
@@ -1973,15 +1973,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL retrieval_evaluator (\n    question,\n    document\n) USING openai(model_name='gpt-4o-mini')\nPROMPT ( system \"\nGiven a question, does the following document have exact\ninformation to answer the question?\nQuestion: {{question}}\nDocument: {{document}}\nThink Step by step, and answer with yes or no only\");"
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": null,
-                    "id": "f1898f5c-d35e-42e1-ab29-ceaa5a48a133",
-                    "metadata": {},
-                    "outputs": [],
-                    "source": "CREATE VIEW get_correct_documents(question String) AS \n with tbl as (\n    select id, content, output  from retrieval_evaluator((\n     SELECT id, content, $question as question from view_primary_data( $question)\n    ),\n     question => question,\n     document => content\n     )\n)\n\nselect id, output, content\nfrom tbl where positionCaseInsensitive(output, 'yes') > 0;"
+                    "source": "CREATE MODEL retrieval_evaluator (\n    question,\n    document\n) USING openai(model_name='gpt-4o-mini')\nPROMPT ( system \"\nGiven a question, does the following document have exact\ninformation to answer the question?\nQuestion: {{question}}\nDocument can be searched over using view_primary_data tool\nThink Step by step, and \nif you can find answer return the answer with similarity score else do not\")\nTOOLS (\n    view_primary_data\n);"
                 },
                 {
                     "cell_type": "markdown",
@@ -2003,7 +1995,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL evaluator(\n    question,\n    answer,\n    score\n) USING openai(model_name='gpt-4o-mini')\nPROMPT (system \"Given a question and possible answer respond if it is relevant or not. \nAnswer 'yes' if the score is below 0.1. If score is not provided, return 'no'.\nPlease use 'yes' or 'no' as the answer. \nquestion: {{question}}\npossible answer: {{answer}}\nsimilarity score: {{score}}\");"
+                    "source": "CREATE MODEL evaluator(\n    question,\n    answer,\n    score\n) USING openai(model_name='gpt-4o-mini')\nPROMPT (system \"Given a question and possible answer respond if it is relevant or not. \nAnswer 'yes' if the score is below 0.20. If score is not provided, return 'no'.\nPlease use 'yes' or 'no' as the answer. \nquestion: {{question}}\npossible answer: {{answer}}\nsimilarity score: {{score}}\");"
                 },
                 {
                     "cell_type": "code",
@@ -2057,7 +2049,7 @@
                             "output_type": "display_data"
                         }
                     ],
-                    "source": "CREATE MODEL main_crag(\n    question\n) USING openai(model_name='gpt-4o-mini')\nPROMPT (system \"Given a question, try to find a relevant answer based on relavent documents. \nRelevant documents can be fetched with get_correct_documents tool.\nIf you cannot get any document, try to use the fallback data source.\nFallback data source can only be used if the main data source doesn't provide a relevant answer.\nYou must verify the answer with the evaluator. If the evaluator returns 'no', do not provide an answer to the user.\nquestion: {{question}}\")\nTOOLS (get_correct_documents COMMENT 'VIEW to get the relevant document to the question',\n    fallback_model COMMENT 'Model for searching fallback data source',\n    evaluator COMMENT 'Model for verifying the answer')\nSETTINGS retries = 1;"
+                    "source": "CREATE MODEL main_crag(\n    question\n) USING openai(model_name='gpt-4o-mini')\nPROMPT (system \"Given a question, try to find a relevant answer based on relavent documents. \nRelevant documents can be fetched with retrieval_evaluator tool. The tool will give out contents of the document if it has the answer in primary data source.\nIf you cannot get any document, try to use the fallback data source.\nFallback data source can only be used if the main data source doesn't provide a relevant answer.\nYou must always verify the answer with the evaluator. If the evaluator returns 'no', do not provide an answer to the user.\nquestion: {{question}}\")\nTOOLS (retrieval_evaluator COMMENT 'View to search over primary source',\n    fallback_model COMMENT 'Model for searching fallback data source',\n    evaluator COMMENT 'Model for verifying the answer')\nSETTINGS retries = 1;"
                 },
                 {
                     "cell_type": "code",
@@ -2106,7 +2098,7 @@
             "nbformat": 4,
             "nbformat_minor": 5
         },
-        "last_modified": "2024-09-17T23:32:49+05:30",
+        "last_modified": "2024-09-23T19:26:15+05:30",
         "created_at": "2024-07-03T14:23:52+07:00",
         "file_download_url": "https://raw.githubusercontent.com/langdb/langdb-samples/main/rag/CRAG.ipynb",
         "tags": [
