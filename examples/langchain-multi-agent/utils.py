@@ -47,16 +47,13 @@ def get_next_node(last_message: BaseMessage, goto: str) -> str:
         return END
     return goto
 
-def create_llm(api_base: str, project_id: str, model_name: str = "gpt-4"):
+def create_llm(api_base: str, project_id: str, model_name: str = "gpt-4", thread_id: str = str(uuid.uuid4())):
     """Create a ChatOpenAI instance with specified configuration."""
-    pre_defined_run_id = uuid.uuid4()
-    default_headers = {"x-project-id": project_id, "x-thread-id": str(pre_defined_run_id)}
     return ChatOpenAI(
         model_name=model_name,
         openai_api_base=api_base,
-        default_headers=default_headers,
+        default_headers={"x-project-id": project_id, "x-thread-id": thread_id},
         api_key=getenv("LANGDB_API_KEY"),
-        
     )
 
 
@@ -90,7 +87,7 @@ def create_workflow(llm_research, llm_chart):
             update={"messages": result["messages"]},
             goto=goto,
         )
-    
+
     def chart_node(state: MessagesState) -> Command[Literal["researcher", END]]:
         """Chart generator node implementation."""
         result = chart_agent.invoke(state)
@@ -114,8 +111,6 @@ def create_workflow(llm_research, llm_chart):
 __all__ = [
     'create_llm',
     'create_workflow',
-    'research_node',
-    'chart_node',
     'tavily_tool',
     'python_repl_tool',
 ]
