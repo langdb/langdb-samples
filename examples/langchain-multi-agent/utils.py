@@ -13,8 +13,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 # Initialize tools
-tavily_tool = TavilySearchResults(tavily_api_key=getenv("TAVILY_API_KEY"), max_results=5)
+tavily_tool = TavilySearchResults(
+    tavily_api_key=getenv("TAVILY_API_KEY"), max_results=5
+)
 repl = PythonREPL()
+
 
 @tool
 def python_repl_tool(
@@ -27,7 +30,10 @@ def python_repl_tool(
     except BaseException as e:
         return f"Failed to execute. Error: {repr(e)}"
     result_str = f"Successfully executed:\n```python\n{code}\n```\nStdout: {result}"
-    return result_str + "\n\nIf you have completed all tasks, respond with FINAL ANSWER."
+    return (
+        result_str + "\n\nIf you have completed all tasks, respond with FINAL ANSWER."
+    )
+
 
 def make_system_prompt(suffix: str) -> str:
     """Create a system prompt with a custom suffix."""
@@ -41,13 +47,20 @@ def make_system_prompt(suffix: str) -> str:
         f"\n{suffix}"
     )
 
+
 def get_next_node(last_message: BaseMessage, goto: str) -> str:
     """Determine the next node based on the last message."""
     if "FINAL ANSWER" in last_message.content:
         return END
     return goto
 
-def create_llm(api_base: str, project_id: str, model_name: str = "gpt-4", thread_id: str = str(uuid.uuid4())):
+
+def create_llm(
+    api_base: str,
+    project_id: str,
+    model_name: str = "gpt-4",
+    thread_id: str = str(uuid.uuid4()),
+):
     """Create a ChatOpenAI instance with specified configuration."""
     return ChatOpenAI(
         model_name=model_name,
@@ -55,7 +68,6 @@ def create_llm(api_base: str, project_id: str, model_name: str = "gpt-4", thread
         default_headers={"x-project-id": project_id, "x-thread-id": thread_id},
         api_key=getenv("LANGDB_API_KEY"),
     )
-
 
 
 def create_workflow(llm_research, llm_chart):
@@ -76,6 +88,7 @@ def create_workflow(llm_research, llm_chart):
             "You can only generate charts. You are working with a researcher colleague."
         ),
     )
+
     def research_node(state: MessagesState) -> Command[Literal["chart_generator", END]]:
         """Research node implementation."""
         result = research_agent.invoke(state)
@@ -107,10 +120,11 @@ def create_workflow(llm_research, llm_chart):
     workflow.add_edge(START, "researcher")
     return workflow.compile()
 
+
 # Export necessary functions and tools
 __all__ = [
-    'create_llm',
-    'create_workflow',
-    'tavily_tool',
-    'python_repl_tool',
+    "create_llm",
+    "create_workflow",
+    "tavily_tool",
+    "python_repl_tool",
 ]

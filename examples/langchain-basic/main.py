@@ -1,8 +1,5 @@
 from langchain import hub
-from langchain.agents import (
-    AgentExecutor,
-    create_tool_calling_agent
-)
+from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_openai import ChatOpenAI
 from langchain_community.agent_toolkits.load_tools import load_tools
 from langchain_community.tools.tavily_search.tool import TavilySearchResults
@@ -12,20 +9,26 @@ from os import getenv
 
 load_dotenv()
 
-PROJECT_ID = "1641f1db-bab8-4687-8a0e-efecd95a5361"
+PROJECT_ID = ""  ## LangDB Project ID
+
 
 def get_function_tools():
+    tavily_tool = TavilySearchResults(
+        tavily_api_key=getenv("TAVILY_API_KEY"), max_results=5
+    )
 
-  tavily_tool = TavilySearchResults(tavily_api_key=getenv("TAVILY_API_KEY"), max_results=5)
+    tools = [tavily_tool]
+    tools.extend(load_tools(["wikipedia"]))
 
-  tools = [
-      tavily_tool
-  ]
-  tools.extend(load_tools(['wikipedia']))
+    return tools
 
-  return tools
 
-def create_llm(api_base: str, project_id: str, model_name: str = "gpt-4o-mini", thread_id: str = str(uuid.uuid4())):
+def create_llm(
+    api_base: str,
+    project_id: str,
+    model_name: str = "gpt-4o-mini",
+    thread_id: str = str(uuid.uuid4()),
+):
     """Create a ChatOpenAI instance with specified configuration."""
     return ChatOpenAI(
         model_name=model_name,
@@ -35,18 +38,17 @@ def create_llm(api_base: str, project_id: str, model_name: str = "gpt-4o-mini", 
     )
 
 
-
 def init_action(question, model):
-  llm = create_llm(
+    llm = create_llm(
         api_base="https://api.us-east-1.langdb.ai",
         project_id=PROJECT_ID,
         model_name=model,
     )
-  prompt = hub.pull("hwchase17/openai-functions-agent")
-  tools = get_function_tools()
-  agent = create_tool_calling_agent(llm, tools, prompt)
-  agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-  agent_executor.invoke({"input": question})
+    prompt = hub.pull("hwchase17/openai-functions-agent")
+    tools = get_function_tools()
+    agent = create_tool_calling_agent(llm, tools, prompt)
+    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+    agent_executor.invoke({"input": question})
 
 
 init_action("Tell me about the owner of Tesla Company", "gpt-4o-mini")
