@@ -1,0 +1,9 @@
+pydantic
+langchain_experimental
+langchain_community
+matplotlib
+pandas
+openai
+langchain_openai
+langgraph
+wikipedia

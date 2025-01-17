@@ -1,0 +1,7 @@
+crewai
+pydantic
+langchain_experimental
+langchain_community
+matplotlib
+pandas
+openai
