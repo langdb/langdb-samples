@@ -4,8 +4,8 @@ This repository covers simple example leveraging CrewAI.
 
 ## Setup 
 
-```
-%pip install -U crewai pydantic
+```bash
+pip install -U crewai pydantic
 ```
 
 ### API Key

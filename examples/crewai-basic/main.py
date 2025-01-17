@@ -1,11 +1,8 @@
 from crewai import Agent, Task, Crew, Process
 from crewai import LLM
-from crewai.tools import BaseTool
-from pydantic import Field
 from os import getenv
 from dotenv import load_dotenv
 from uuid import uuid4
-from typing import Annotated, Optional, Any, Type
 
 load_dotenv()
 
