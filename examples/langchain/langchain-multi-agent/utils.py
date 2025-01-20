@@ -63,14 +63,9 @@ def create_llm(
 ):
     """Create a ChatOpenAI instance with specified configuration."""
     if not project_id:
-        default_headers = {
-            "x-thread-id": thread_id
-        }
+        default_headers = {"x-thread-id": thread_id}
     else:
-        default_headers = {
-            "x-project-id": project_id,
-            "x-thread-id": thread_id
-        }
+        default_headers = {"x-project-id": project_id, "x-thread-id": thread_id}
     return ChatOpenAI(
         model_name=model_name,
         openai_api_base=api_base,

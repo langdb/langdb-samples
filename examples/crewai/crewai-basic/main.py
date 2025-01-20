@@ -17,6 +17,7 @@ if PROJECT_ID:
 
 print(default_headers)
 
+
 def main():
     llm_writer = LLM(
         model="gpt-4o-mini",
