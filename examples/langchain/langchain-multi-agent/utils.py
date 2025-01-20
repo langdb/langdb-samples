@@ -58,14 +58,23 @@ def get_next_node(last_message: BaseMessage, goto: str) -> str:
 def create_llm(
     api_base: str,
     project_id: str,
-    model_name: str = "gpt-4",
+    model_name: str = "gpt-4o-mini",
     thread_id: str = str(uuid.uuid4()),
 ):
     """Create a ChatOpenAI instance with specified configuration."""
+    if not project_id:
+        default_headers = {
+            "x-thread-id": thread_id
+        }
+    else:
+        default_headers = {
+            "x-project-id": project_id,
+            "x-thread-id": thread_id
+        }
     return ChatOpenAI(
         model_name=model_name,
         openai_api_base=api_base,
-        default_headers={"x-project-id": project_id, "x-thread-id": thread_id},
+        default_headers=default_headers,
         api_key=getenv("LANGDB_API_KEY"),
     )
 
