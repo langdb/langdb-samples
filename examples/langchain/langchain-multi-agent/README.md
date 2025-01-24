@@ -1,6 +1,6 @@
 # LangChain Multi-Agent Example
 
-This repository covers various examples leveraging LangChain Multi-Agent.
+This example covers optimising a multi-agent system using LangDB.
 
 ## Pre-requisites
 
