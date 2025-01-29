@@ -1,0 +1,16 @@
+=== Cost Analysis Report (20250129_160708) ===
+Total cost: $0.0161
+
+Cost per thread:
+Thread 0c8e2d92-493d-4916-83b5-3a5084134cb5: $0.0011
+Thread 4a5ba631-7947-4d5a-9e26-f5c51d1c7c4d: $0.0021
+Thread 5a4ba778-4af0-469b-84a3-d98743324c99: $0.0015
+Thread 715d0936-3ad4-4b29-be42-f47fadcb047a: $0.0019
+Thread 82af12cd-cd2b-4ba4-a3d3-d1a1d216df09: $0.0015
+Thread 8d78fd23-e207-495e-96c5-1f771dc92714: $0.0015
+Thread e365ce82-cca9-4148-bdf3-bb0b16510511: $0.0017
+Thread e81f1766-3482-434a-83be-63943bfea08c: $0.0016
+Thread ead791ce-b557-4026-9f3e-00c8c46c6fba: $0.0015
+Thread f2242c4c-c276-489c-9f53-12f524d78a32: $0.0018
+
+Average cost per message: $0.0005
