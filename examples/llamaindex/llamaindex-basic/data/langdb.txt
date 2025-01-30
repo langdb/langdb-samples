@@ -1,0 +1,38 @@
+Introduction to AI Gateway
+Unified API for all LLMs
+
+LangDB provides OpenAI compatible APIs to connect with multiple Large Language Models (LLMs) by just changing two lines of code.
+Features:
+Provide access to all major LLMs
+Ensure seamless integration with leading large language models to maximize flexibility and power.
+
+No framework code required
+Enable plug-and-play functionality using any framework like Langchain, Vercel AI SDK, CrewAI, etc., for easy adoption.
+
+Plug & Play Tracing & Cost Optimization
+Simplify implementation of tracing and cost optimization features, ensuring streamlined operations.
+
+Automatic routing based on cost, quality, and other variables
+Dynamically route requests to the most suitable LLM based on predefined parameters.
+
+Benchmark and provide insights
+Deliver insights into the best-performing models for specific tasks, such as coding or reasoning, to enhance decision-making.
+
+Roadmap
+Open Source AI Gateway (In Progress)
+Open-source AI Gateway for community collaboration and transparency. Built in Rust.
+
+Prompt Caching & Optimization (In Progress)
+Introduce caching mechanisms to optimize prompt usage and reduce redundant costs.
+
+GuardRails (In Progress)
+Implement safeguards to enhance reliability and accuracy in AI outputs.
+
+Leaderboard of models per category
+Create a comparative leaderboard to highlight model performance across categories.
+
+Ready-to-use evaluations for non-data scientists
+Provide accessible evaluation tools for users without a data science background.
+
+Readily fine-tunable data based on usage
+Offer pre-configured datasets tailored for fine-tuning, enabling customized improvements with ease.
