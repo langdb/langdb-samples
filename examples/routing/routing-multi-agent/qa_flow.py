@@ -43,7 +43,7 @@ def create_qa_flow(
     project_id=None,
 ):
     default_headers = {"x-thread-id": thread_id, "x-tags": tags}
-    if not project_id:
+    if project_id:
         default_headers["x-project-id"] = project_id
     if routing_enabled:
         model = "openai/router/dynamic"
