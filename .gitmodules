@@ -1,0 +1,3 @@
+[submodule "examples/rasa"]
+	path = examples/rasa
+	url = https://github.com/langdb/rasa-starter-pack

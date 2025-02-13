@@ -21,6 +21,8 @@ This repository provides comprehensive examples and integrations for LangDB, dem
 | CrewAI | Multi-agent Orchestration | [`examples/crewai/crewai-multi-agent`](examples/crewai/crewai-multi-agent) |
 | LlamaIndex | Basic Integration | [`examples/llamaindex/llamaindex-basic`](examples/llamaindex/llamaindex-basic) |
 | Vercel AI SDK | JavaScript/Node.js Implementation | [`examples/vercel`](examples/vercel) |
+| Rasa | Conversational AI Integration | [`examples/rasa`](examples/rasa) |
+
 
 ### Feature Examples
 
