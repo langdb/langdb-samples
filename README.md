@@ -1,21 +1,69 @@
 # LangDB Samples
 
-This repository covers various examples leveraging LangDB. 
+This repository provides comprehensive examples and integrations for LangDB, demonstrating its capabilities across various frameworks and use cases.
 
-## Integration Steps
+## Quick Start
 
 1. Replace the base URL with LangDB's API endpoint
 2. Use your LangDB token as the API key
 3. Add your project ID in the extra headers
 4. Start making API calls using any supported model
 
-## Key Benefits
+## Examples
 
-- **Simple Integration**: Use the familiar OpenAI SDK interface
-- **Model Flexibility**: Switch between different LLMs effortlessly
-- **Enhanced Monitoring**: Get detailed insights into your LLM usage
-- **Cost Optimization**: Better control over LLM spending
-- **Developer-Focused**: Built for practical, streamlined workflows
+### Framework Integrations
+
+| Framework | Example | Path |
+|-----------|---------|------|
+| LangChain | Basic Integration | [`examples/langchain/langchain-basic`](examples/langchain/langchain-basic) |
+| LangChain | Multi-agent Setup | [`examples/langchain/langchain-multi-agent`](examples/langchain/langchain-multi-agent) |
+| CrewAI | Basic Implementation | [`examples/crewai/crewai-basic`](examples/crewai/crewai-basic) |
+| CrewAI | Multi-agent Orchestration | [`examples/crewai/crewai-multi-agent`](examples/crewai/crewai-multi-agent) |
+| LlamaIndex | Basic Integration | [`examples/llamaindex/llamaindex-basic`](examples/llamaindex/llamaindex-basic) |
+| Vercel AI SDK | JavaScript/Node.js Implementation | [`examples/vercel`](examples/vercel) |
+| Rasa | Conversational AI Integration | [`examples/rasa`](examples/rasa) |
+
+### Feature Examples
+
+| Feature | Example | Path |
+|---------|---------|------|
+| MCP Support | Model Provider Integration | [`examples/mcp`](examples/mcp) |
+| Routing | Basic Setup | [`examples/routing/routing-basic`](examples/routing/routing-basic) |
+| Routing | Multi-agent Setup | [`examples/routing/routing-multi-agent`](examples/routing/routing-multi-agent) |
+| Evaluation | Model Evaluation & Cost Analysis | [`examples/evaluation`](examples/evaluation) |
+
+## Key Features
+
+🚀 **High Performance**
+- Built in Rust for maximum speed and reliability
+- Seamless integration with any framework (Langchain, Vercel AI SDK, CrewAI, etc.)
+- Integrate with any MCP servers(https://docs.langdb.ai/ai-gateway/features/mcp-support)
+
+📊 **Enterprise Ready**
+- [Comprehensive usage analytics and cost tracking](https://docs.langdb.ai/ai-gateway/features/analytics)
+- [Rate limiting and cost control](https://docs.langdb.ai/ai-gateway/features/usage)
+- [Advanced routing, load balancing and failover](https://docs.langdb.ai/ai-gateway/features/routing)
+- [Evaluations](https://docs.langdb.ai/ai-gateway/features/evaluation)
+
+🔒 **Data Control**
+- Full ownership of your LLM usage data
+- Detailed logging and tracing
+
+### Looking for More? Try Our Hosted & Enterprise Solutions
+
+🌟 **[Hosted Version](https://langdb.ai)** - Get started in minutes with our fully managed solution
+- Zero infrastructure management
+- Automatic updates and maintenance
+- Pay-as-you-go pricing
+
+💼 **[Enterprise Version](https://langdb.ai/)** - Enhanced features for large-scale deployments
+- Advanced team management and access controls
+- Custom security guardrails and compliance features
+- Intuitive monitoring dashboard
+- Priority support and SLA guarantees
+- Custom deployment options
+
+[Contact our team](https://calendly.com/d/cqs2-cfz-gdn/meet-langdb-team) to learn more about enterprise solutions.
 
 ## Built for Developers
 
