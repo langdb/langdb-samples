@@ -13,15 +13,16 @@ This repository provides comprehensive examples and integrations for LangDB, dem
 
 ### Framework Integrations
 
-| Framework | Example | Path |
-|-----------|---------|------|
-| LangChain | Basic Integration | [`examples/langchain/langchain-basic`](examples/langchain/langchain-basic) |
-| LangChain | Multi-agent Setup | [`examples/langchain/langchain-multi-agent`](examples/langchain/langchain-multi-agent) |
-| CrewAI | Basic Implementation | [`examples/crewai/crewai-basic`](examples/crewai/crewai-basic) |
-| CrewAI | Multi-agent Orchestration | [`examples/crewai/crewai-multi-agent`](examples/crewai/crewai-multi-agent) |
-| LlamaIndex | Basic Integration | [`examples/llamaindex/llamaindex-basic`](examples/llamaindex/llamaindex-basic) |
-| Vercel AI SDK | JavaScript/Node.js Implementation | [`examples/vercel`](examples/vercel) |
-| Rasa | Conversational AI Integration | [`examples/rasa`](https://github.com/langdb/rasa-starter-pack) |
+| Framework | Example                           | Path                                                                                   |
+|-----------|-----------------------------------|----------------------------------------------------------------------------------------|
+| LangChain | Basic Integration                 | [`examples/langchain/langchain-basic`](examples/langchain/langchain-basic)             |
+| LangChain | Multi-agent Setup                 | [`examples/langchain/langchain-multi-agent`](examples/langchain/langchain-multi-agent) |
+| LangChain | RAG-agent Setup                   | [`examples/langchain/langchain-rag-bot`](examples/langchain/langchain-rag-bot)         |
+| CrewAI | Basic Implementation              | [`examples/crewai/crewai-basic`](examples/crewai/crewai-basic)                         |
+| CrewAI | Multi-agent Orchestration         | [`examples/crewai/crewai-multi-agent`](examples/crewai/crewai-multi-agent)             |
+| LlamaIndex | Basic Integration                 | [`examples/llamaindex/llamaindex-basic`](examples/llamaindex/llamaindex-basic)         |
+| Vercel AI SDK | JavaScript/Node.js Implementation | [`examples/vercel`](examples/vercel)                                                   |
+| Rasa | Conversational AI Integration     | [`examples/rasa`](https://github.com/langdb/rasa-starter-pack)                         |
 
 
 ### Feature Examples
