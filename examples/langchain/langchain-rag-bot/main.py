@@ -1,4 +1,5 @@
 import os
+import tempfile
 from os import getenv
 
 import streamlit as st
@@ -6,7 +7,11 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.memory import ConversationBufferMemory
 import requests
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
 from langchain_openai import ChatOpenAI
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # Constants
 PROMPT_TEMPLATE = """
@@ -27,13 +32,21 @@ Answer the question based on the above context: {query}
 """
 
 CHROMA_DB_DIR = "chroma"
-LANGDB_API_URL = "https://api.us-east-1.langdb.ai/your-project-d/v1"  # Replace with your LANGDB project id
+LANGDB_API_URL = "https://api.us-east-1.langdb.ai/your-project-id/v1"  # Replace with your LANGDB project id
 os.environ["LANGDB_API_KEY"] = "your-api-key"
 
 st.set_page_config(page_title="Banking Assistant", layout="wide")
 st.title("Banking FAQ Assistant")
 st.write("Ask questions about banking services, loan options, and interest rates!")
 
+# Initialize ChromaDB and Embeddings
+def initialize_chromadb():
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={'device': 'cpu'})
+    vector_store = Chroma(persist_directory=CHROMA_DB_DIR, embedding_function=embeddings)
+    return vector_store
+
+# Initialize ChromaDB and LangChain LLM
+vector_db = initialize_chromadb()
 # Initialize LangChain LLM
 llm = ChatOpenAI(
     base_url=LANGDB_API_URL,
@@ -57,6 +70,29 @@ prompt_template = PromptTemplate(
 
 # LangChain LLM Chain
 chain = LLMChain(llm=llm, prompt=prompt_template, memory=memory)
+
+st.sidebar.title("Options")
+uploaded_file = st.sidebar.file_uploader("Upload PDF", type="pdf")
+
+def process_pdf(file):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_file_path = os.path.join(temp_dir, file.name)
+        with open(temp_file_path, "wb") as temp_file:
+            temp_file.write(file.getbuffer())
+
+        pdf_loader = PyPDFLoader(temp_file_path)
+        documents = pdf_loader.load()
+
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=80, length_function=len)
+        chunks = text_splitter.split_documents(documents)
+
+        return chunks
+
+if uploaded_file:
+    user_vector_store_dir = CHROMA_DB_DIR
+    user_chunks = process_pdf(uploaded_file)
+    vector_db.add_documents(user_chunks)
+    st.sidebar.success(f"Processed {len(user_chunks)} chunks from uploaded PDF.")
 
 # Chatbox implementation
 st.subheader("Chatbox")
@@ -87,8 +123,15 @@ send_button = st.button("Send")
 if send_button:
     user_input = st.session_state.user_input.strip()  # Ensure the input is not empty or just whitespace
     if user_input:
+        context = ""
+        # Retrieve relevant context from ChromaDB
         try:
-            context = ""
+            search_results = vector_db.similarity_search(user_input, k=3)
+            for result in search_results:
+                context += result.page_content + "\n\n"
+        except Exception as e:
+            st.error(f"Error retrieving context from ChromaDB: {e}")
+        try:
             response = chain.run(context=context, query=user_input)
             # Update conversation memory
             st.session_state.messages.append({"role": "user", "content": user_input, "is_user":True})
