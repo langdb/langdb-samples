@@ -32,6 +32,16 @@ LANGDB_PROJECT_ID=your_project_id_here
 
 Models are configured individually for each agent in `main.py`. Each agent uses the `create_llm()` function to configure its language model.
 
+> We need to setup Virtual MCP Server and Virtual Model for `Researcher Agent` to use Tavily Search MCP.
+
+## Virtual MCP Server Setup
+
+1. Log in and navigate to **MCP Servers → Virtual MCP Servers** on [app.langdb.ai](https://app.langdb.ai).  
+2. Click **+ New Virtual MCP Server** and configure:
+   - **Name**: e.g. `web-search-mcp`  
+   - **Underlying MCP**: choose [Tavily Search MCP](https://app.langdb.ai/mcp-servers/tavily-mcp-4024f9c3-3d20-48d2-92da-4c7e9910e5f9)
+3. Then head to Models page to setup virtual model.
+
 ## Virtual Model Setup
 
 1. Log in and navigate to **Project → Models** on [app.langdb.ai](https://app.langdb.ai).  
@@ -40,16 +50,18 @@ Models are configured individually for each agent in `main.py`. Each agent uses 
 4. Update your `main.py` for `Researcher Agent` pass that virtual-model name into `create_llm(...)`, for example:
 
 ```python
-    @agent
-    def researcher(self) -> Agent:
-        return Agent(
-            config=self.agents_config['researcher'],
-            verbose=True,
-            llm=create_llm("openai/langdb/your-model-name", "research")
-        )
+      @agent
+      def researcher(self) -> Agent:
+         return Agent(
+               config=self.agents_config['researcher'],
+               verbose=True,
+               llm=create_llm("openai/langdb/your-model-name", "research")
+         )
 ```
 
-### Current Model Assignments
+### Code
+
+Models are configured individually for each agent in main.py. Each agent uses the create_llm() function to configure its language model.
 
 ```python
 
@@ -154,3 +166,10 @@ Tasks are defined in `configs/tasks.yaml`:
 - `crewai>=0.108.0`: Multi-agent orchestration framework
 - `crewai-tools>=0.0.1`: Additional tools for CrewAI
 - `python-dotenv>=1.0.1`: Environment variable management
+
+
+## References
+
+* [LangDB Virtual MCP Servers](https://docs.langdb.ai/concepts/virtual-mcp-servers)
+* [LangDB Virtual MCP](https://docs.langdb.ai/concepts/virtual-mcp-servers)
+* [CrewAI Documentation](https://docs.crewai.com/)
