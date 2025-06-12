@@ -1,0 +1,39 @@
+research_task:
+  description: >
+    Research the given topic thoroughly using web search tools.
+    Gather current information, statistics, trends, and key insights.
+    Focus on finding credible sources and recent developments.
+  expected_output: >
+    A comprehensive research summary with key findings, statistics,
+    and relevant information about the topic. Include source citations.
+  agent: researcher
+
+analysis_task:
+  description: >
+    Analyze the research findings and extract key insights.
+    Identify patterns, trends, and important metrics.
+    Summarize the most significant points for the report.
+  expected_output: >
+    An analytical summary highlighting the most important findings,
+    trends, and actionable insights from the research data.
+  agent: analyst
+  context:
+    - research_task
+
+report_writing_task:
+  description: >
+    Create a well-structured, professional report in Markdown format.
+    Include executive summary, main findings, analysis, and recommendations.
+    Ensure the report is clear, concise, and actionable.
+  expected_output: >
+    A complete Markdown report with proper formatting, including:
+    - Executive Summary
+    - Introduction
+    - Key Findings
+    - Analysis
+    - Recommendations
+    - Conclusion
+  agent: report_writer
+  context:
+    - research_task
+    - analysis_task
