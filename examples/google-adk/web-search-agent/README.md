@@ -41,9 +41,18 @@ You have two options for integrating MCP servers with the web search agent:
 
 ### Option 1: Direct MCP Server Connection (Current Implementation)
 
-The current implementation directly connects to an MCP server via MCPToolset:
+The current implementation dynamically connects to an MCP server via MCPToolset using a utility function:
 
 ```python
+# Dynamic MCP URL generation
+from ...utils import get_dynamic_mcp_url
+
+# Get dynamic MCP server URL
+mcp_slug = "search_7l9zk5zp"  # Your MCP Server Slug
+mcp_url = get_dynamic_mcp_url(mcp_slug)
+if not mcp_url:
+    raise RuntimeError("Failed to get dynamic MCP server URL. Check environment variables and API connectivity.")
+
 critic_agent = LlmAgent(
     model=LiteLlm(
         "openai/openai/gpt-4.1",
@@ -58,13 +67,24 @@ critic_agent = LlmAgent(
     instruction=prompt.CRITIC_PROMPT,
     tools=[MCPToolset(
         connection_params=SseServerParams(
-            url="https://api.langdb.ai/mcp/a4588f1a-0366-4175-8757-f32820bbf2af", # Example
+            url=mcp_url,  # Dynamic URL
             timeout=30,
         )
     )],
     after_model_callback=_render_reference,
 )
 ```
+
+#### Dynamic MCP URL Generation
+
+The system automatically creates MCP server sessions using the `utils.py` helper:
+
+- **`get_dynamic_mcp_url(mcp_slug)`**: Creates a session by POSTing to `{host}/mcp-servers/{mcp_slug}/session`
+- **Authentication**: Uses `LANGDB_API_KEY` as Bearer token
+- **Session URL**: Returns `{host}/mcp/{session_id}` for the MCPToolset
+- **Error Handling**: Throws `RuntimeError` if session creation fails
+
+To use with your own MCP server, update the `mcp_slug` variable in `critic/agent.py`.
 
 ### Option 2: Virtual Model with Attached MCP Server
 

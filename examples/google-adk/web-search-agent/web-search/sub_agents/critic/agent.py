@@ -10,6 +10,7 @@ from google.adk.models import LlmResponse
 from google.genai import types
 
 from . import prompt
+from ...utils import get_dynamic_mcp_url
 
 # Shared thread ID for the entire 2-step web search process
 SHARED_THREAD_ID = str(uuid4())
@@ -52,6 +53,12 @@ def _render_reference(
         del llm_response.content.parts[1:]
     return llm_response
 
+# Get dynamic MCP server URL
+mcp_slug = "search_7l9zk5zp" # MCP Server Slug
+mcp_url = get_dynamic_mcp_url(mcp_slug)
+if not mcp_url:
+    raise RuntimeError("Failed to get dynamic MCP server URL. Check environment variables and API connectivity.")
+
 critic_agent = LlmAgent(
     model=LiteLlm(
         "openai/openai/gpt-4.1",
@@ -66,7 +73,7 @@ critic_agent = LlmAgent(
     instruction=prompt.CRITIC_PROMPT,
     tools=[MCPToolset(
         connection_params=SseServerParams(
-            url="https://api.staging.langdb.ai/mcp/a4588f1a-0366-4175-8757-f32820bbf2af",
+            url=mcp_url,
             timeout=30,
         )
     )],
