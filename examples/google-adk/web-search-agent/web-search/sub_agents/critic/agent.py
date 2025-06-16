@@ -2,15 +2,13 @@
 
 import os
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, SseServerParams
 from uuid import uuid4
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmResponse
 from google.genai import types
+from langdb_adk import LangDBLlm
 
 from . import prompt
-from ...utils import get_dynamic_mcp_url
 
 # Shared thread ID for the entire 2-step web search process
 SHARED_THREAD_ID = str(uuid4())
@@ -53,29 +51,23 @@ def _render_reference(
         del llm_response.content.parts[1:]
     return llm_response
 
-# Get dynamic MCP server URL
-mcp_slug = "search_7l9zk5zp" # MCP Server Slug
-mcp_url = get_dynamic_mcp_url(mcp_slug)
-if not mcp_url:
-    raise RuntimeError("Failed to get dynamic MCP server URL. Check environment variables and API connectivity.")
-
+server_url = "https://api.us-east-1.langdb.ai/mcp/tavily_kq4hxxv"
 critic_agent = LlmAgent(
-    model=LiteLlm(
-        "openai/openai/gpt-4.1",
+    model=LangDBLlm(
+        model="openai/gpt-4.1",
         api_key=os.getenv("LANGDB_API_KEY"),
-        api_base=f"{os.getenv('LANGDB_BASE_URL')}/{os.getenv('LANGDB_PROJECT_ID')}/v1",
+        project_id = os.getenv("LANGDB_PROJECT_ID"),
         extra_headers={
             "x-thread-id": SHARED_THREAD_ID,
             "x-run-id": SHARED_RUN_ID
-        }
+        },
+        mcp_servers = [{
+            "server_url": server_url,
+            "type": "sse",
+            "name": "Tavily"
+        }]
     ),
     name="critic_agent",
     instruction=prompt.CRITIC_PROMPT,
-    tools=[MCPToolset(
-        connection_params=SseServerParams(
-            url=mcp_url,
-            timeout=30,
-        )
-    )],
     after_model_callback=_render_reference,
 )

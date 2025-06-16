@@ -26,69 +26,55 @@ LANGDB_PROJECT_ID=your_project_id_here
 ### Environment Variable Details
 
 - `LANGDB_API_KEY`: Your LangDB API key (required)
-- `LANGDB_BASE_URL`: The base URL for your LangDB instance
 - `LANGDB_PROJECT_ID`: Your LangDB project identifier
 
 ## Model Configuration
 
-Models are configured individually for each agent in the sub-agent files. Each agent uses LiteLLM to configure its language model through LangDB virtual models.
+Models are configured individually for each agent in the sub-agent files. Each agent uses LangDBLlm from the langdb-adk package (an extension of Google ADK) to configure its language model with direct LangDB and MCP server integration.
 
-> We need to setup Virtual MCP Server and Virtual Model for the `Critic Agent` to use Tavily Search MCP for web search capabilities.
+> The `Critic Agent` is configured with Tavily Search MCP server for web search capabilities through LangDB's direct MCP server configuration.
 
-## MCP Server Integration Options
+## MCP Server Integration
 
-You have two options for integrating MCP servers with the web search agent:
-
-### Option 1: Direct MCP Server Connection (Current Implementation)
-
-The current implementation dynamically connects to an MCP server via MCPToolset using a utility function:
+The current implementation uses Google ADK with the langdb-adk extension, which provides LangDBLlm for direct LangDB and MCP server integration. This approach simplifies the integration by configuring MCP servers directly in the model initialization:
 
 ```python
-# Dynamic MCP URL generation
-from ...utils import get_dynamic_mcp_url
+from langdb_adk import LangDBLlm
 
-# Get dynamic MCP server URL
-mcp_slug = "search_7l9zk5zp"  # Your MCP Server Slug
-mcp_url = get_dynamic_mcp_url(mcp_slug)
-if not mcp_url:
-    raise RuntimeError("Failed to get dynamic MCP server URL. Check environment variables and API connectivity.")
-
+server_url = "https://api.us-east-1.langdb.ai/mcp/tavily_wtok4wiw"
 critic_agent = LlmAgent(
-    model=LiteLlm(
-        "openai/openai/gpt-4.1",
+    model=LangDBLlm(
+        model="openai/gpt-4.1",
         api_key=os.getenv("LANGDB_API_KEY"),
-        api_base=f"{os.getenv('LANGDB_BASE_URL')}/{os.getenv('LANGDB_PROJECT_ID')}/v1",
+        project_id=os.getenv("LANGDB_PROJECT_ID"),
         extra_headers={
             "x-thread-id": SHARED_THREAD_ID,
             "x-run-id": SHARED_RUN_ID
-        }
+        },
+        mcp_servers=[{
+            "server_url": server_url,
+            "type": "sse",
+            "name": "Tavily"
+        }]
     ),
     name="critic_agent",
     instruction=prompt.CRITIC_PROMPT,
-    tools=[MCPToolset(
-        connection_params=SseServerParams(
-            url=mcp_url,  # Dynamic URL
-            timeout=30,
-        )
-    )],
     after_model_callback=_render_reference,
 )
 ```
 
-#### Dynamic MCP URL Generation
+### MCP Server Configuration
 
-The system automatically creates MCP server sessions using the `utils.py` helper:
+- **Direct Integration**: MCP servers are configured directly in the LangDBLlm model initialization
+- **Server URL**: Use your LangDB MCP server URL (e.g., `https://api.us-east-1.langdb.ai/mcp/your_server_id`)
+- **Authentication**: Uses `LANGDB_API_KEY` for authentication
+- **Type**: Specify connection type ("sse" for Server-Sent Events)
 
-- **`get_dynamic_mcp_url(mcp_slug)`**: Creates a session by POSTing to `{host}/mcp-servers/{mcp_slug}/session`
-- **Authentication**: Uses `LANGDB_API_KEY` as Bearer token
-- **Session URL**: Returns `{host}/mcp/{session_id}` for the MCPToolset
-- **Error Handling**: Throws `RuntimeError` if session creation fails
+To use with your own MCP server, update the `server_url` variable in `critic/agent.py`.
 
-To use with your own MCP server, update the `mcp_slug` variable in `critic/agent.py`.
+## Alternative: Virtual Model with Attached MCP Server
 
-### Option 2: Virtual Model with Attached MCP Server
-
-Alternatively, you can create a virtual model with an attached MCP server:
+You can also create a virtual model with an attached MCP server:
 
 #### Step 1: Virtual MCP Server Setup
 
@@ -102,43 +88,43 @@ Alternatively, you can create a virtual model with an attached MCP server:
 1. Log in and navigate to **Project › Models** on [app.langdb.ai](https://app.langdb.ai).  
 2. Click **+ New Virtual Model** and configure name, base model, version, and MCP Server for search tools. Use the [Tavily Search MCP](https://app.langdb.ai/mcp-servers/tavily-mcp-4024f9c3-3d20-48d2-92da-4c7e9910e5f9) you created above.
 3. Copy the generated model name (e.g. `openai/langdb/web-search-critic@v1`).  
-4. Update your `critic/agent.py` to use the virtual model name and remove the MCPToolset:
+4. Update your `critic/agent.py` to use the virtual model name:
 
 ```python
 critic_agent = LlmAgent(
-    model=LiteLlm(
-        "openai/langdb/your-model-name",  # Your LangDB virtual model here
+    model=LangDBLlm(
+        model="openai/langdb/your-model-name",  # Your LangDB virtual model here
         api_key=os.getenv("LANGDB_API_KEY"),
-        api_base=f"{os.getenv('LANGDB_BASE_URL')}/{os.getenv('LANGDB_PROJECT_ID')}/v1",
+        project_id=os.getenv("LANGDB_PROJECT_ID"),
         extra_headers={
             "x-thread-id": SHARED_THREAD_ID,
             "x-run-id": SHARED_RUN_ID
         }
+        # No need for mcp_servers parameter - MCP server is attached to the virtual model
     ),
     name="critic_agent",
     instruction=prompt.CRITIC_PROMPT,
-    # No need for tools parameter - MCP server is attached to the virtual model
     after_model_callback=_render_reference,
 )
 ```
 
 ## Architecture
 
-The web search agent uses a **SequentialAgent** architecture with two specialized sub-agents:
+The web search agent is built on **Google ADK's SequentialAgent** architecture with two specialized sub-agents, enhanced with LangDB integration via langdb-adk:
 
-1. **Critic Agent** (with MCP tools for web search)
+1. **Critic Agent** (Google ADK LlmAgent with LangDB MCP integration)
    - Analyzes user queries to understand information needs
-   - Conducts comprehensive web searches using multiple search strategies
+   - Conducts comprehensive web searches using LangDB's MCP server integration
    - Evaluates source reliability and information quality
    - Organizes findings and identifies information gaps
 
-2. **Reviser Agent** (synthesis and formatting)
+2. **Reviser Agent** (Google ADK LlmAgent with LangDB integration)
    - Receives research findings from the Critic Agent
    - Synthesizes information into coherent, comprehensive answers
    - Structures responses with appropriate formatting and organization
    - Ensures final answers directly address user queries
 
-Both agents share a common thread ID to maintain context throughout the process.
+Both agents use Google ADK's threading system with a shared thread ID to maintain context throughout the process.
 
 ## Key Features
 
@@ -151,10 +137,10 @@ Both agents share a common thread ID to maintain context throughout the process.
 - Focus on authoritative and recent sources
 - Analysis of conflicting information and source reliability
 
-### 3. Virtual MCP Server Integration
+### 3. Direct MCP Server Integration
 - Web search capabilities through Tavily Search MCP
-- Seamless integration with LangDB virtual models
-- Configurable search tools and parameters
+- Direct MCP server configuration in LangDBLlm
+- Simplified setup without additional toolsets
 
 ### 4. Professional Synthesis
 - Well-structured, comprehensive final answers
@@ -162,9 +148,9 @@ Both agents share a common thread ID to maintain context throughout the process.
 - Clear, accessible writing style with proper organization
 
 ### 5. Model Flexibility
-- LiteLLM integration supports multiple model providers
-- Configurable model selection per agent
-- LangDB virtual model support for enhanced capabilities
+- Google ADK foundation with LangDB ADK extension supports multiple model providers
+- Configurable model selection per agent via LangDB integration
+- Direct MCP server integration through LangDB for enhanced capabilities
 
 ## Usage
 
@@ -205,55 +191,60 @@ web-search-agent/
 
 - Python 3.11+
 - Google ADK (Agents Development Kit)
-- LiteLLM for model integration
+- LangDB ADK (extension of Google ADK for LangDB integration)
 
 ### Installation
 
 ```bash
-pip install google-adk litellm
+pip install google-adk langdb-adk
 ```
 
 ### Main Dependencies
 
 - `google-adk`: Google's Agents Development Kit for multi-agent systems
-- `litellm`: Unified interface for various LLM providers
+- `langdb-adk>=0.1.8`: Extension of Google ADK that adds LangDB integration with unified LLM interface and direct MCP server integration
 
 ## Model Configuration Details
 
 ### Current Configuration
 
-Both agents are configured to use GPT-4.1 through LangDB:
+Both agents are configured using Google ADK's LlmAgent with LangDBLlm (from langdb-adk extension) to connect to LangDB:
 
 ```python
 # Critic Agent (with web search tools)
-model=LiteLlm(
-    "openai/openai/gpt-4.1",
+model=LangDBLlm(
+    model="openai/gpt-4.1",
     api_key=os.getenv("LANGDB_API_KEY"),
-    api_base=f"{os.getenv('LANGDB_BASE_URL')}/{os.getenv('LANGDB_PROJECT_ID')}/v1"
+    project_id=os.getenv("LANGDB_PROJECT_ID"),
+    mcp_servers=[{
+        "server_url": "https://api.us-east-1.langdb.ai/mcp/tavily_4ykdv5fj",
+        "type": "sse",
+        "name": "Tavily"
+    }]
 )
 
 # Reviser Agent (synthesis only)
-model=LiteLlm(
-    "openai/openai/gpt-4.1",
+model=LangDBLlm(
+    model="openai/gpt-4.1",
     api_key=os.getenv("LANGDB_API_KEY"),
-    api_base=f"{os.getenv('LANGDB_BASE_URL')}/{os.getenv('LANGDB_PROJECT_ID')}/v1"
+    project_id=os.getenv("LANGDB_PROJECT_ID")
 )
 ```
 
 ### Supported Model Formats
 
 - OpenAI models: `"openai/gpt-4.1"`, `"openai/gpt-3.5-turbo"`
-- Other Provider Models: Follow LiteLLM format `"openai/anthropic/claude-sonnet-4"`
-- LangDB Virtual Models: `"openai/langdb/your-model-name"`
+- Other Provider Models: Follow LangDB format `"anthropic/claude-sonnet-4"`
+- LangDB Virtual Models: `"langdb/your-model-name"`
 
-## =� References
+## References
 
-* [Google ADK Documentation](https://developers.google.com/agent-development-kit)
+* [Google ADK Documentation](https://google.github.io/adk-docs/)
+* [LangDB Documentation](https://docs.langdb.ai/)
 * [LangDB Virtual MCP Servers](https://docs.langdb.ai/concepts/virtual-mcp-servers)
 * [LangDB Virtual Models](https://docs.langdb.ai/concepts/virtual-models)
 * [Tavily Search MCP](https://app.langdb.ai/mcp-servers/tavily-mcp-4024f9c3-3d20-48d2-92da-4c7e9910e5f9)
-* [LiteLLM Documentation](https://docs.litellm.ai/)
 
 ---
 
-Enjoy building comprehensive web search workflows with Google ADK + LangDB! Configure your virtual MCP servers and models through the LangDB dashboard for optimal search capabilities.
+Enjoy building comprehensive web search workflows with Google ADK + LangDB ADK! Configure your MCP servers directly in your agents or through virtual models in the LangDB dashboard for optimal search capabilities.

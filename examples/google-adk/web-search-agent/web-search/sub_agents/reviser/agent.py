@@ -3,11 +3,11 @@
 
 import os
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmResponse
 from . import prompt
 from ..critic.agent import SHARED_THREAD_ID, SHARED_RUN_ID
+from langdb_adk import LangDBLlm
 
 _END_OF_EDIT_MARK = "---END-OF-EDIT---"
 
@@ -26,10 +26,10 @@ def _remove_end_of_edit_mark(
     return llm_response
 
 reviser_agent = LlmAgent(
-    model=LiteLlm(
-        "openai/openai/gpt-4.1",
+    model=LangDBLlm(
+        model="openai/gpt-4.1",
         api_key=os.getenv("LANGDB_API_KEY"),
-        api_base=f"{os.getenv('LANGDB_BASE_URL')}/{os.getenv('LANGDB_PROJECT_ID')}/v1",
+        project_id = os.getenv("LANGDB_PROJECT_ID"),
         extra_headers={
             "x-thread-id": SHARED_THREAD_ID,
             "x-run-id": SHARED_RUN_ID
