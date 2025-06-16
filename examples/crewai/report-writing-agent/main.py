@@ -55,7 +55,7 @@ class ReportGenerationCrew():
         return Agent(
             config=self.agents_config['researcher'],
             verbose=True,
-            llm=create_llm("openai/langdb/search_hidpugg0", "research")
+            llm=create_llm("openai/langdb/reportresearcher_9wzgx5n5", "research")
         )
 
     @agent
@@ -63,7 +63,7 @@ class ReportGenerationCrew():
         return Agent(
             config=self.agents_config['analyst'],
             verbose=True,
-            llm=create_llm("openai/gpt-4.1", "analysis")
+            llm=create_llm("openai/anthropic/claude-3.7-sonnet", "analysis")
         )
 
     @agent
