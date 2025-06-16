@@ -1,0 +1,9 @@
+curl https://api.staging.langdb.ai/v1/moderations \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer langdb_N3Q3ZnA1dGRkbnJjYTF2a2llcWtpOWFpOHU=" \
+  -H "X-Project-ID: a414e87d-e7cf-4a6b-9d5f-010dc511499b" \
+  -d '{
+    "model": "omni-moderation-latest",
+    "input": "...text to classify goes here..."
+  }'

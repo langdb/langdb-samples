@@ -1,0 +1,215 @@
+,question,experiment=single,experiment=routed
+0,What are the key components of an LLM-powered autonomous agent system?,"In a LLM-powered autonomous agent system, the large language model serves as the agent’s brain, complemented by several key components:
+
+1. **Planning**: 
+   - **Subgoal and decomposition**: The agent breaks down large tasks into smaller, manageable subgoals, enabling efficient handling of complex tasks.
+   - **Reflection and refinement**: The agent can self-criticize and reflect on past actions to learn from mistakes and improve the quality of final results.
+
+2. **Memory**:
+   - **Short-term memory**: Utilizes in-context learning as the model's short-term memory to learn and adapt.
+   - **Long-term memory**: Allows the agent to retain and recall information over extended periods, often by leveraging an external vector store and fast retrieval processes.
+
+3. **Tool use**: The agent can call external APIs to obtain information not present in the model weights, such as current data, code execution capabilities, and access to proprietary information sources.
+
+LLM-powered autonomous agents have been demonstrated in various proof-of-concept examples, such as AutoGPT, GPT-Engineer, and BabyAGI. These agents are not only adept at generating written content but also serve as general problem solvers.
+
+Additional functionalities include leveraging natural language as an interface between LLMs and external components like memory and tools. However, the reliability of model outputs may vary, as LLMs can make formatting errors or sometimes deviate from instructions.
+
+These agents are exemplified in use cases like scientific discovery, where they explore hypotheses, design experiments, and generate new knowledge; or in generative simulations, where they interact in sandbox environments, similar to games like The Sims, exhibiting human-like behavior by utilizing mechanisms like memory and planning.
+
+Source: [LLM Powered Autonomous Agents | Lil'Log](https://lilianweng.github.io/posts/2023-06-23-agent/)","In a Large Language Model (LLM)-powered autonomous agent system, the LLM functions as the core controller or ""brain"" of the agent. The system is complemented by several essential architectural components and functionalities:
+
+1. **Planning:**
+   - **Subgoal and Decomposition:** The agent has the ability to break down large tasks into smaller, more manageable subgoals, enabling efficient handling of complex tasks.
+   - **Reflection and Refinement:** The agent can engage in self-criticism and self-reflection over past actions, learning from mistakes to improve future actions and enhancing the quality of the final results.
+
+2. **Memory:**
+   - **Short-term Memory:** Utilizes the in-context learning capabilities of the model to perform short-term remembering and information retention.
+   - **Long-term Memory:** Provides the agent with the ability to retain and recall infinite information over extended periods by leveraging an external vector store for fast retrieval.
+
+3. **Tool Use:**
+   - **External API Integration:** The agent learns to call external APIs to obtain information not included in the model's pre-trained weights, such as current or proprietary information, code execution capabilities, and more. This includes examples like ChatGPT Plugins and OpenAI API function calling, where the LLM is augmented with tool use capability to enhance its functionality.
+
+Furthermore, the system uses natural language as an interface between the LLM and external components such as memory and tools. However, LLMs may have reliability issues with model outputs, leading to errors that require the system to handle parsing appropriately.
+
+This architecture also addresses challenges such as the combination of neural and symbolic processing within entities known as MRKL systems. These systems route tasks to the best-suited modules, which can either use neural or symbolic processing, enhancing the LLM's problem-solving efficiency."
+1,How does the Chain of Thought (CoT) prompting technique enhance model performance in task decomposition?,"Chain of thought (CoT) prompting technique has become a standard method for enhancing model performance on complex tasks. It works by instructing the model to ""think step by step,"" which enables the model to utilize more computation at test time to decompose complex tasks into smaller and simpler steps. This process transforms large tasks into multiple manageable ones and provides insight into the model’s thinking process.
+
+The CoT technique encourages the use of multi-step reasoning, allowing for a structured problem-solving approach. This helps in making reasoning explicit, which can improve performance and provide an interpretation of the model’s inner workings. For instance, the model can decompose a problem into several thought steps, generate multiple thoughts per step, and form a tree structure for reasoning. Each potential solution or thought can be evaluated using search processes like BFS (breadth-first search) or DFS (depth-first search), utilizing classifiers or majority votes for evaluation.
+
+Moreover, CoT prompts can be designed to focus on problems of varying complexity. By explicitly preferring complex chains through measures like majority voting, the model can better handle complex reasoning tasks. Research has shown that prompts containing complex examples can boost accuracy on complex questions.
+
+The CoT approach also interacts with external tools or knowledge bases to improve performance, especially in scenarios requiring the latest or domain-specific knowledge unavailable to the model. Using CoT simultaneously with information retrieval and other methods can provide the model with needed context.
+
+Thus, CoT prompting enhances a model's ability to tackle complex tasks by effectively breaking them down into simpler, manageable steps and promoting structured, multi-step reasoning.","Chain of thought (CoT) prompting is a technique used to improve large language models' (LLMs) ability to solve complex tasks by guiding them to ""think step by step."" This approach encourages the model to break down a hard task into smaller and simpler steps, utilizing more test-time computation and allowing for a clearer interpretation of the model's thought process.
+
+The CoT prompting works by prompting the model with instructions to decompose a given problem into manageable subtasks. For instance, it could involve a model being prompted with questions like ""Steps for XYZ"" or ""What are the subgoals for achieving XYZ?"" This method is beneficial as it transforms intricate problems into a set of simpler tasks, making the overall process more manageable and understandable.
+
+Additionally, Tree of Thoughts (ToT), an extension of CoT, further enhances task decomposition by exploring multiple reasoning possibilities at each step, forming a tree structure. This involves decomposing the problem into thought steps and generating multiple thoughts per step, followed by a breadth-first or depth-first search process where each state is evaluated by a classifier or majority vote. This expands the model's capability to consider various reasoning paths, potentially leading to more accurate solutions.
+
+Such task decomposition strategies—encompassing both CoT and ToT—contribute significantly to the improved performance of LLMs by not only enhancing their problem-solving abilities but also providing insights into their reasoning processes, thus making them more effective in handling complex and multifaceted tasks."
+2,"What are some examples of external tools LLMs can use to extend their capabilities, as mentioned in the documents?","External tools that large language models (LLMs) can use to enhance their functionalities include:
+
+1. **MRKL System**: It contains a collection of ""expert"" modules, where the general-purpose LLM works as a router to route inquiries to the most suitable expert module. The modules can be neural (e.g., deep learning models) or symbolic (e.g., math calculator, currency converter, weather API).
+
+2. **Symbolic Tools**: These tools work reliably when determining and utilizing them effectively based on the LLM capability.
+
+3. **Tool Augmented Language Models (TALM)**: Fine-tunes a language model to learn to use external tool APIs, improving model outputs with new API call annotations.
+
+4. **ChatGPT Plugins and OpenAI API Function Calling**: These are practical examples where LLMs are augmented with the capability to use external tools. Tools APIs in these scenarios can be provided by other developers or self-defined.
+
+5. **HuggingGPT**: A framework that allows ChatGPT to act as a task planner to select models available on the HuggingFace platform, thus enhancing task execution and summarization capabilities.
+
+These examples illustrate how LLMs can effectively integrate external tools to address tasks that require specialized knowledge or capabilities beyond those of the core model.","In the context of augmenting Large Language Models (LLMs) with external tools and APIs to enhance functionality and overcome inherent limitations, various strategies and systems have been proposed. Here are the key insights and examples:
+
+1. **MRKL System**: A system that integrates “expert” modules with a general-purpose LLM acting as a router. The modules can be either neural (e.g., deep learning models) or symbolic (e.g., math calculator, currency converter, weather API).
+
+2. **TALM (Tool Augmented Language Models) and Toolformer**: These frameworks involve fine-tuning a language model to learn to use external tool APIs. They enrich the dataset by adding API call annotations which can improve the model outputs.
+
+3. **ChatGPT Plugins and OpenAI API Function Calling**: These are practical instances of LLMs enhanced with the capability to use external tools. They allow seamless integration of external APIs, which can be provided by other developers or be self-defined.
+
+4. **HuggingGPT**: Utilizes ChatGPT as a task planner to select models from the HuggingFace platform and summarize responses based on execution results. It involves a four-stage process: task planning, model selection, model execution, and response generation.
+
+5. **API-Bank**: A benchmark that evaluates the performance of tool-augmented LLMs. It includes a diverse set of APIs such as those for search engines, calculators, and smart home control, among others. The API-Bank workflow involves making decisions on API needs, selecting the right API, and refining responses based on API results.
+
+These systems underscore the importance of LLMs understanding when and how to reliably use external symbolic tools and APIs. The ability to integrate such tools allows LLMs to perform tasks beyond their inherent limitations, thus extending their utility in various applications."
+3,What methods are used to enable LLMs to self-reflect and refine their outputs?,"Techniques employed to facilitate self-reflection and output refinement in large language models (LLMs) include:
+
+1. **Chain of Hindsight (CoH)**: This technique involves presenting the model with a sequence of past outputs, each annotated with feedback. The model is fine-tuned on these sequences to improve its outputs based on hindsight. It uses human feedback data to fine-tune the model to predict the best possible outcome while learning from the sequence of improvements.
+
+2. **ReAct Framework**: This framework integrates reasoning and acting within LLMs by combining task-specific discrete actions with the language space. The ReAct framework enables the LLM to generate reasoning traces in natural language and interact with the environment to improve decision-making and reasoning.
+
+3. **Reflexion Framework**: Reflexion equips agents with dynamic memory and self-reflection capabilities to enhance reasoning skills. It uses a heuristic to determine when actions within a trajectory are ineffective or contain hallucination and should be stopped. This self-reflection process helps improve the reasoning capabilities by resetting the environment for new trials based on reflection results.
+
+These techniques enable LLMs to iteratively refine their outputs and learn from past mistakes and feedback.","Large Language Models (LLMs) can evaluate and iteratively improve their own generated output through structured frameworks such as HuggingGPT and ChemCrow. These frameworks utilize a multi-stage process where the LLM first acts as a planner to break down user requests into tasks. The tasks are then executed using external tool APIs tailored to the needs of the task. The LLM evaluates its performance based on the execution results and iteratively modifies its approach to refine and improve the output. 
+
+The specific techniques involved include:
+1. Task Planning: LLM divides the user requests into distinct tasks and identifies the dependencies and arguments for each task.
+2. Tool Utilization: The LLM selects and uses tools from a curated set of external APIs to execute each task. These tools can range from search engines to specialized calculations, based on the domain needs.
+3. Iterative Decision Making: The LLM engages in iterative decision making at each step, deciding whether to refine inputs or modify its approach based on preliminary results.
+4. Evaluation and Refinement: If the initial results are not satisfactory, the LLM can adjust the inputs or method of execution and try again.
+
+The HuggingGPT framework, for example, uses these capabilities to select and summarize model results, while ChemCrow enhances its task execution with expert-designed tools for specific scientific domains. While LLMs can perform self-evaluation in this structured manner, it's important to note that tasks requiring deep expertise may still need human oversight to ensure accuracy and correctness."
+4,How does few-shot learning improve performance compared to zero-shot learning in prompt engineering?,"Prompt Engineering | Lil'Log
+
+Zero-shot and few-shot learning are two of the most basic approaches for prompting a model, as outlined in many large language model (LLM) papers. Zero-shot learning involves simply feeding the task text to the model and requesting results, without providing examples. An example of this could be asking for sentiment analysis directly on a given statement. Few-shot learning, on the other hand, provides a set of high-quality demonstrations, each comprising both an input and the desired output, on the target task. This means giving the model a few example pairs to guide its responses. 
+
+The main advantage of few-shot learning over zero-shot learning in the context of prompt engineering is that few-shot learning can improve model performance by providing context through examples. This approach can significantly enhance the model's ability to produce accurate and relevant outputs by leveraging the structure and information provided in the examples. It accustomed the model to the task format and reduces ambiguity, essentially guiding the model towards generating results that align more closely with the task's genuine requirements. 
+
+In summary, few-shot learning enhances model performance over zero-shot learning by equipping models with useful examples that inform decision-making and endow them with task-specific understanding, resulting in more accurate and contextually appropriate outputs.","Providing a few examples in a prompt (few-shot learning) helps improve the performance of a language model compared to providing no examples (zero-shot learning) because it allows the model to better understand human intention and grasp the criteria for what kinds of answers are wanted. When the model is given good examples, it can align more closely with the expected output format and nuances, leading to improved performance.
+
+There are several reasons for this improvement:
+1. **Understanding of Human Intention**: Few-shot learning involves showing the model specific examples that demonstrate what the desired outcome should look like, thus helping the model to capture the correct understanding of what is being asked.
+   
+2. **Reduced Ambiguity**: By providing examples, few-shot learning removes some of the ambiguity inherent in zero-shot learning, where the model is left to infer the task format entirely on its own.
+
+3. **Biases Awareness**: Few-shot learning reduces the impact of common biases in language models such as majority label bias, recency bias, and common token bias, particularly when examples are carefully selected and balanced.
+
+4. **Performance Maximization**: Studies have found that constructing in-context examples effectively can significantly enhance model performance, and the order and choice of examples can lead to different outcomes.
+
+However, few-shot learning comes with downsides such as requiring more tokens, which may hit the context length limits of the model, and potentially more computational resources compared to zero-shot learning. Despite these trade-offs, few-shot learning is generally found to lead to better performance outcomes for language models than zero-shot learning."
+5,What are the benefits and challenges of integrating LLMs with external APIs for problem-solving?,"Combining large language models (LLMs) with external APIs provides several advantages and presents potential challenges:
+
+**Advantages:**
+1. **Enhanced Capabilities**: Integrating APIs can significantly enhance the problem-solving capabilities of LLMs. For example, models like TALM (Tool Augmented Language Models) use text-to-text API calls to extend their functionality beyond language generation, allowing them to interact with external data and perform dynamic tasks (Parisi et al.). This combination allows LLMs to work with real-time information and perform tasks they wouldn't be able to do with text processing alone.
+
+2. **Decoupling Complex Computation**: By generating programming language statements, as seen with Program-aided language models (PAL) and Program of Thoughts prompting (PoT), LLMs can offload computation tasks to external code interpreters or APIs (Gao et al., Chen et al.). This setup helps manage complex reasoning and computations that would be difficult for LLMs to handle natively.
+
+3. **Dynamic Knowledge Retrieval**: Allowing LLMs to access the latest information, such as using Google Search, helps them compensate for the limitations of static trained data (e.g., pre-2020 knowledge cutoff). This capability enables LLMs to answer more current questions, as highlighted in studies showing LLMs' enhanced performance with tools (Wei et al., 2022).
+
+**Potential Difficulties:**
+1. **Reliability and Stability**: LLMs sometimes exhibit issues like formatting errors or unpredictable outputs when interplaying with APIs. Ensuring reliable operation requires robust error handling and scaleable solutions for parsing outputs (Weng, 2023).
+
+2. **Efficiency and Performance**: Calls to external APIs introduce latency and can slow down LLM processing. In scenarios like HuggingGPT, addressing efficiency is crucial, as interactions during inference can be resource-intensive and require a long context window (Li et al., 2023).
+
+3. **Complex Decision-Making**: The API-Bank benchmark highlights challenges in LLM decisions, such as needing to accurately determine whether an API call is required or choosing the correct API to call. LLMs must refine their outputs iteratively to produce satisfactory results, showing the intricacy of decision chains involved in effective tool use (Li et al., 2023).
+
+These elements illustrate that while the integration of LLMs with external APIs can lead to more versatile AI models, it also requires careful consideration of operational factors like reliability, efficiency, and decision-making complexity.","A detailed and accurate answer to the question on integrating Large Language Models (LLMs) with external APIs is found in the content from Lilian Weng's comprehensive article on LLM-powered autonomous agents. Here's the relevant information:
+
+Integrating LLMs with external APIs involves using natural language as an interface between LLMs and various external components such as memory and tools. A MRKL (Modular, Neuro-Symbolic Architecture) system can be employed, where the LLM acts as a router, directing inquiries to appropriate expert modules, which can be neural (like deep learning models) or symbolic (like math calculators or weather APIs). Experiments have revealed that while LLMs can handle explicitly stated problems effectively, they may struggle with extracting the right arguments for verbal arithmetic problems, highlighting the importance of the LLM’s capability in determining when and how to use external tools.
+
+There are existing frameworks such as Tool Augmented Language Models (TALM) and Toolformer that fine-tune LLMs to leverage external API tools by expanding datasets based on API annotations to enhance model outputs. Examples of practical implementations include ChatGPT Plugins and OpenAI API's function calling, where external tool APIs, either third-party or self-defined, augment LLM capabilities.
+
+A notable framework, HuggingGPT, uses ChatGPT as a task planner to select models on platforms like HuggingFace, following a systematic process involving task planning, model selection, and response generation. This framework, however, faces challenges such as the need for efficiency improvements due to slow inference rounds and interactions, reliance on long context windows, and the stability of LLM outputs and external services.
+
+Furthermore, API-Bank serves as a benchmark for evaluating tool-augmented LLMs, containing various APIs from search engines to health data management. It assesses the capability of LLMs to make accurate API calls, determine the necessity of such calls, identify the appropriate API to invoke, and refine results as needed, demonstrating the complexity and decision-making involved in effectively using external APIs.
+
+Overall, integrating LLMs with external APIs can significantly enhance problem-solving capabilities by allowing LLMs to access specialized tools and data. However, challenges such as ensuring reliable model output, determining the correct usage of tools, efficiency issues, and context window limitations need to be addressed for effective integration."
+6,What is the difference between short-term memory and long-term memory in LLM-based systems?,"- **Short-term memory** in large language model (LLM) systems is analogous to in-context learning. This type of memory is short and finite, constrained by the finite context window length of a Transformer model. It functions like working memory, storing information the model is currently using or focusing on to execute complex cognitive tasks such as learning, reasoning, and understanding. It's similar to the human brain's working memory, where it has a limited capacity and duration, typically handling about 7 items and lasting for about 20-30 seconds.
+
+- **Long-term memory**, in contrast, provides the LLM system with the capacity to retain and recall a virtually unlimited amount of information over extended periods. This memory type is usually implemented as an external vector store that the agent can access at query time through fast retrieval methods. It represents a lasting store of knowledge that the agent can use whenever needed, much like how the human brain stores facts, experiences, and concepts over a lifetime. The long-term memory system in LLMs can make use of structures like Maximum Inner Product Search (MIPS) for rapid data retrieval, and common algorithms such as Locality-Sensitive Hashing (LSH), ANNOY, and HNSW facilitate this process efficiently.
+
+In summary, short-term memory is used for immediate data processing tasks within the constraints of the model's context window, whereas long-term memory supports vast and extended retention of information utilizing external storage solutions for efficient retrieval.","In the context of LLM-powered autonomous agents, LLMs manage short-term and long-term memory differently. Short-term memory can be considered as utilizing in-context learning, which involves processing and learning from input provided within a session or context window. This is inherently limited due to finite context length, which restricts the inclusion of extensive historical information or complex instructions. 
+
+On the other hand, long-term memory refers to the ability of the agent to retain and recall vast amounts of information over extended periods. This often requires leveraging external vector stores and fast retrieval systems to access a larger knowledge pool, as the internal memory within LLMs may not hold all necessary information effectively. Despite these external aids, the representation power of these methods is not as robust as the full attention mechanism possible within a limited context window.
+
+LLM agents also face challenges such as difficulties in long-term planning and task decomposition, and the finite context length poses a challenge as it limits the agent's capability to learn from past actions unless supplemented by mechanisms like self-reflection. This setup illustrates the distinct handling of information over short-term contexts versus long-term knowledge in LLMs."
+7,What strategies are recommended for constructing effective in-context examples in prompt engineering?,"In the domain of prompt engineering, creating effective in-context examples is crucial for guiding large language models (LLMs) to yield accurate and desirable outputs. Several strategies play a pivotal role in this endeavor:
+
+1. **Example Quality**: High-quality demonstrations are essential. Each example should clearly present both the input and the desired output. This helps the model understand the task requirements precisely. For instance, in sentiment analysis, provide clear pairs of texts and their corresponding sentiments.
+
+2. **Example Quantity**: The effect of the number of examples used (few-shot learning) can significantly influence the model's performance. Providing a set of demonstrations can help the model learn from the context better and improve its predictions.
+
+3. **Ordering of Examples**: The sequence in which examples are presented can impact the model's interpretation. Some research suggests ordering examples based on similarity to the prompt or by using a logical progression can enhance model performance.
+
+4. **Complexity of Examples**: For tasks requiring reasoning, including examples with higher reasoning complexity can lead to better performance. Complexity is usually measured by the number of reasoning steps required. When separating reasoning steps, using a clear separator such as a newline is found to be more effective than other punctuations like periods or semicolons.
+
+5. **Inclusion of Explanations**: While explanations can help provide context, their benefit can be small to moderate depending on the task (QA, NLI) and the model used. However, care should be taken as explanations might lead to nonfactual or inconsistent predictions.
+
+6. **Self-Consistency and Iterative Querying**: Using self-consistency by generating multiple answers or explanations and selecting the most common one can improve reasoning tasks. Additionally, using methods like Self-Ask, where the model is prompted to ask follow-up questions or use external APIs to search for additional context, can enhance performance, especially in complex, multi-step reasoning tasks.
+
+By strategically selecting and organizing examples within prompts, prompt engineers can better align the model’s output with desired outcomes, leveraging both the inherent patterns of human reasoning and the model's computational abilities.","Prompt Engineering | Lil'Log Table of Contents Basic Prompting Zero-Shot Few-shot Tips for Example Selection Tips for Example Ordering Instruction Prompting Self-Consistency Sampling Chain-of-Thought (CoT) Types of CoT prompts Tips and Extensions Automatic Prompt Design Augmented Language Models Retrieval Programming Language External APIs Citation Useful Resources References Prompt Engineering, also known as In-Context Prompting, refers to methods for how to communicate with LLM to steer its behavior for desired outcomes without updating the model weights. It is an empirical science and the effect of prompt engineering methods can vary a lot among models, thus requiring heavy experimentation and heuristics. This post only focuses on prompt engineering for autoregressive language models, so nothing with Cloze tests, image generation or multimodality models. At its core, the goal of prompt engineering is about alignment and model steerability. Check my previous post on controllable text generation. [My personal spicy take] In my opinion, some prompt engineering papers are not worthy 8 pages long, since those tricks can be explained in one or a few sentences and the rest is all about benchmarking. An easy-to-use and shared benchmark infrastructure should be more beneficial to the community. Iterative prompting or external tool use would not be trivial to set up. Also non-trivial to align the whole research community to adopt it. Basic Prompting  Zero-shot and few-shot learning are two most basic approaches for prompting the model, pioneered by many LLM papers and commonly used for benchmarking LLM performance. Zero-Shot  Zero-shot learning is to simply feed the task text to the model and ask for results. (All the sentiment analysis examples are from SST-2) Text: i'll bet the video game is a lot more fun than the film. Sentiment: Few-shot  Few-shot learning presents a set of high-quality demonstrations, each consisting of both input and desired output, on the target
+
+library for combining language models with other components to build applications. Prompt Engineering Guide repo contains a pretty comprehensive collection of education materials on prompt engineering. learnprompting.org PromptPerfect Semantic Kernel References  [1] Zhao et al. “Calibrate Before Use: Improving Few-shot Performance of Language Models.” ICML 2021 [2] Liu et al. “What Makes Good In-Context Examples for GPT-3?” arXiv preprint arXiv:2101.06804 (2021). [3] Lu et al. “Fantastically Ordered Prompts and Where to Find Them: Overcoming Few-Shot Prompt Order Sensitivity.” ACL 2022 [4] Ye et al. “In-Context Instruction Learning.” arXiv preprint arXiv:2302.14691 (2023). [5] Su et al. “Selective annotation makes language models better few-shot learners.” arXiv preprint arXiv:2209.01975 (2022). [6] Rubin et al. “Learning to retrieve prompts for in-context learning.” NAACL-HLT 2022 [7] Wei et al. “Chain of thought prompting elicits reasoning in large language models.” NeurIPS 2022 [8] Wang et al. “Self-Consistency Improves Chain of Thought Reasoning in Language Models.” ICLR 2023. [9] Diao et al. “Active Prompting with Chain-of-Thought for Large Language Models.” arXiv preprint arXiv:2302.12246 (2023). [10] Zelikman et al. “STaR: Bootstrapping Reasoning With Reasoning.” arXiv preprint arXiv:2203.14465 (2022). [11] Ye & Durrett. “The unreliability of explanations in few-shot in-context learning.” arXiv preprint arXiv:2205.03401 (2022). [12] Trivedi et al. “Interleaving retrieval with chain-of-thought reasoning for knowledge-intensive multi-step questions.” arXiv preprint arXiv:2212.10509 (2022). [13] Press et al. “Measuring and narrowing the compositionality gap in language models.” arXiv preprint arXiv:2210.03350 (2022). [14] Yao et al. “ReAct: Synergizing reasoning and acting in language models.” ICLR 2023. [15] Fu et al. “Complexity-based prompting for multi-step reasoning.” arXiv preprint arXiv:2210.00720 (2022). [16] Wang et al. “Rationale-augmented ensembles
+
+exploring multiple reasoning possibilities at each step. It first decomposes the problem into multiple thought steps and generates multiple thoughts per step, essentially creating a tree structure. The search process can be BFS or DFS while each state is evaluated by a classifier (via a prompt) or majority vote. Fig. 2. How Self-Ask works with external search queries.(Image source: Yao et al. 2022). Automatic Prompt Design  Prompt is a sequence of prefix tokens that increase the probability of getting desired output given input. Therefore we can treat them as trainable parameters and optimize them directly on the embedding space via gradient descent, such as AutoPrompt (Shin et al., 2020, Prefix-Tuning (Li & Liang (2021), P-tuning (Liu et al. 2021) and Prompt-Tuning (Lester et al. 2021). This section in my “Controllable Neural Text Generation” post has a good coverage of them. The trend from AutoPrompt to Prompt-Tuning is that the setup gets gradually simplified. APE (Automatic Prompt Engineer; Zhou et al. 2022) is a method to search over a pool of model-generated instruction candidates and then filters the candidate set according to a chosen score function to ultimately choose the best candidate with highest score. Prompt LLM to generate instruction candidates based on a small set of demonstrations in the form of input-output pairs. E.g. {Given desired input-output pairs}nnThe instruction is. Given a dataset of $mathcal{D}_text{train} = {(x, y)}$, we would like to find an instruction $rho$ such that $rho^* = argmax_rho mathbb{E}_{(x, y) in mathcal{D}_text{train} [f(rho, x, y)]$, where $f(.)$ is a per-sample score function, such as execution accuracy $mathbb{1}[text{LM}(.vert rho, x)=y]$ or log probability: $p_text{LM}(y mid rho, x)$. Use an iterative Monte Carlo search method to improve the best candidates by proposing semantically similar variants via prompts like Generate a variation of the following instruction while keeping the semantic meaning.nnInput:"
+8,How does the Tree of Thoughts (ToT) framework expand upon Chain of Thought reasoning?,"**Task Decomposition:**
+
+Chain of thought (CoT; Wei et al. 2022) has become a standard prompting technique for enhancing model performance on complex tasks. The model is instructed to “think step by step” to utilize more test-time computation to decompose hard tasks into smaller and simpler steps. CoT transforms big tasks into multiple manageable tasks and sheds light on an interpretation of the model’s thinking process. 
+
+Tree of Thoughts (Yao et al. 2023) extends CoT by exploring multiple reasoning possibilities at each step. It first decomposes the problem into multiple thought steps and generates multiple thoughts per step, creating a tree structure. The search process can be BFS (breadth-first search) or DFS (depth-first search) with each state evaluated by a classifier (via a prompt) or majority vote. 
+
+Task decomposition can be done:
+1. By LLM with simple prompting like ""Steps for XYZ.n1."", ""What are the subgoals for achieving XYZ?""
+2. By using task-specific instructions; e.g., ""Write a story outline."" for writing a novel, or 
+3. With human inputs.
+
+Another quite distinct approach, LLM+P (Liu et al. 2023), involves relying on an external classical planner to do long-horizon planning. This approach utilizes the Planning Domain Definition Language (PDDL) as an intermediate interface to describe the planning problem. In this process, LLM (1) translates the problem into “Problem PDDL,” then (2) requests a classical planner to generate a PDDL plan based on an existing “Domain PDDL,” and finally (3) translates the PDDL plan back into natural language. Essentially, the planning step is outsourced to an external tool, assuming the availability of domain-specific PDDL and a suitable planner which is common in certain robotic setups but not in many other domains. 
+
+**Self-Reflection:**
+
+Self-reflection is a vital aspect that allows autonomous agents to improve iteratively by refining past action decisions and correcting previous mistakes. It plays a crucial role in real-world tasks.","The key differences and advantages between the Tree of Thoughts (ToT) framework and Chain of Thought (CoT) reasoning are outlined below:
+
+1. **Task Decomposition**:
+   - **Chain of Thought (CoT)**: CoT is a prompting technique that instructs the model to “think step by step,” aimed at enhancing performance on complex tasks. It decomposes hard tasks into smaller and simpler steps by transforming a big task into multiple manageable tasks, providing insights into the model’s reasoning process.
+   - **Tree of Thoughts (ToT)**: ToT extends the CoT approach by not only decomposing a problem into multiple thought steps but also exploring multiple reasoning possibilities at each step. This creates a tree structure, where multiple thoughts are generated per step, allowing a search process that can utilize breadth-first search (BFS) or depth-first search (DFS). Each state in this tree is evaluated by a classifier (via a prompt) or by majority vote.
+
+2. **Reasoning Process**:
+   - **CoT**: Focuses on a linear, step-by-step reasoning process, which helps in interpreting how the model arrives at an answer.
+   - **ToT**: Offers a more flexible and comprehensive reasoning process by examining various potential pathways at each step, resulting in a tree of possible thoughts and actions. This enables more intricate exploration and evaluation of different paths to reach a solution.
+
+3. **Task Decomposition Methodology**:
+   - **For CoT**: Typically uses task-specific instructions or relies on simple prompting strategies to break down complex problems.
+   - **For ToT**: Can use simple prompting, task-specific instructions, or even human inputs to decompose tasks. Additionally, it can integrate with external tools or methodologies (e.g., LLM+P) when necessary, particularly for long-horizon planning tasks in domains like robotics.
+
+4. **Advantages**:
+   - **CoT** is advantageous for tasks where a linear step-by-step approach suffices to enhance understanding and interpretation of the reasoning process.
+   - **ToT** provides greater advantages in scenarios that benefit from exploring multiple reasoning pathways, especially in complex problem-solving situations where different approaches and outcomes need to be evaluated before deciding on a course of action.
+
+Overall, while CoT focuses on a straightforward linear approach to task decomposition, ToT introduces a multidimensional aspect by exploring various possibilities, which can significantly enhance problem-solving capabilities in complex and uncertain environments."
+9,What are some proof-of-concept examples of autonomous agents powered by LLMs?,"Building agents with LLM (large language model) as its core controller is a cool concept. Several proof-of-concepts demos, such as AutoGPT, GPT-Engineer, and BabyAGI, serve as inspiring examples. The potentiality of LLM extends beyond generating well-written copies, stories, essays, and programs; it can be framed as a powerful general problem solver. 
+
+In a LLM-powered autonomous agent system, LLM functions as the agent’s brain, complemented by several key components:
+
+1. **Planning**
+   - **Subgoal and decomposition:** The agent breaks down large tasks into smaller, manageable subgoals, enabling efficient handling of complex tasks.
+   - **Reflection and refinement:** The agent can do self-criticism and self-reflection over past actions, learn from mistakes, and refine them for future steps, thereby improving the quality of final results.
+
+2. **Memory**
+   - **Short-term memory:** Utilizes in-context learning as a form of short-term memory to understand and act based on recent information.
+   - **Long-term memory:** Provides the agent with the capability to retain and recall information over extended periods, often by leveraging an external vector store and fast retrieval.
+
+3. **Tool use**
+   - The agent learns to call external APIs for additional information that is missing from the model weights, including current information, code execution capability, access to proprietary information sources, and more. 
+
+These components collectively enable LLM-powered agents to function effectively as autonomous systems.","LLM-powered autonomous agents demonstrate their potential through various examples such as AutoGPT, GPT-Engineer, and BabyAGI. These examples highlight how large language models (LLMs) can be utilized beyond generating written content; they serve as general problem solvers. In an LLM-powered autonomous agent system, the LLM acts as the brain, complemented by other components like planning, memory, and tool use. Planning involves task decomposition and self-reflection to improve problem-solving, while memory allows the agent to retain and recall information. Tool use enables the agent to access external APIs for information beyond what is available in the model's pre-training. Notable implementations include MRKL systems, which use LLMs to route inquiries to expert modules, and HuggingGPT, which employs ChatGPT as a task planner on the HuggingFace platform. These examples demonstrate the practical capabilities and potential impact of LLM-powered autonomous agents."

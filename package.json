@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "postman-api-server": "github:delano/postman-mcp-server"
+  }
+}
