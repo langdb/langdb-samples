@@ -25,7 +25,6 @@ from agents import (
     ModelSettings,
     RunConfig,
     Runner,
-    WebSearchTool,
     set_default_openai_key,
     set_default_openai_client,
     set_tracing_disabled,
@@ -91,7 +90,7 @@ booking_agent = Agent(
 
 travel_recommendation_agent = Agent(
     name="Travel Recommendation Specialist",
-    model=get_model("langdb/recc_8ac7wclb", client),  # langDB virtual model here, check readme for more information
+    model=get_model("langdb/travel_recommendation__agent_mnmzvtez", client),  # langDB virtual model here, check readme for more information
     model_settings=ModelSettings(
         tool_choice='auto',
     ),
@@ -104,13 +103,13 @@ travel_recommendation_agent = Agent(
 
 reply_agent = Agent(
     name="Reply Agent",
-    model=get_model("langdb/reply_idzqgtrm", client),  # langDB virtual model here, check readme for more information
+    model=get_model("langdb/reply_agent_8cp5g3ii", client),  # langDB virtual model here, check readme for more information
     instructions=f"{RECOMMENDED_PROMPT_PREFIX} You reply to the user's query and make it more informal by adding emojis.",
 )
 
 query_router_agent = Agent(
     name="Query Router",
-    model=get_model("langdb/router_c77w2sji", client),  # langDB virtual model here, check readme for more information
+    model=get_model("langdb/query_router_agent_wgkdh6wf", client),  # langDB virtual model here, check readme for more information
     model_settings=ModelSettings(
         tool_choice='auto',
         parallel_tool_calls = False

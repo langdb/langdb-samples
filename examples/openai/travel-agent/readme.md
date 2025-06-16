@@ -81,6 +81,12 @@ Agents are wired as tools and handoffs via MCP servers—the router calls bookin
 | **OpenAI Moderation** | Blocks hate, self‑harm, violence, sexual, or other disallowed content as per OpenAI policy. | Default category thresholds |
 | **Minimum Word Count** | Ensures requests contain enough context for quality answers. | Reject if < 8 words |
 
+#### Reply Agent
+
+| Guardrail          | Purpose                                  |
+|--------------------|------------------------------------------|
+| Language Validator | Ensures output quality and formatting.   |
+
 ## Key Features
 
 ### 1. Agent‑as‑Tool Pattern
@@ -107,7 +113,7 @@ Agents are wired as tools and handoffs via MCP servers—the router calls bookin
 ##  Running the Example
 
 ```bash
-python run.py "I'm planning a trip to Japan in April. What are the must‑see cherry blossom spots?"
+uv run app.py "I'm planning a trip to Japan in April. What are the must‑see cherry blossom spots?"
 ```
 
 * Queries are first routed by the **Query Router Agent**.
@@ -121,7 +127,7 @@ python run.py "I'm planning a trip to Japan in April. What are the must‑see ch
 * [LangDB Virtual MCP Servers](https://docs.langdb.ai/concepts/virtual-mcp-servers)
 * [LangDB Virtual MCP](https://docs.langdb.ai/concepts/virtual-mcp-servers)
 * [LangDB Guardrails](https://docs.langdb.ai/features/guardrails)
-* [OpenAI Agents SDK](https://github.com/openai/agents-sdk)
+* [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/)
 ---
 
 Enjoy building multi-agent workflows with LangDB + OpenAI Agents SDK! Feel free to tweak guardrails and tools via your Virtual Model configurations.
